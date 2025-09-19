@@ -413,7 +413,7 @@ export const getPromptInspiration = async (): Promise<string[]> => {
     try {
         const response = await aiClient.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: 'Generate 5 unique, creative, and visually-rich prompts for an AI image generator. The prompts should be diverse in theme and style.',
+            contents: 'Generate 5 highly detailed and visually-rich prompts for an AI image generator, one for each of the following themes in order: "sci-fi cityscape", "fantasy portrait", "abstract nature", "vintage photograph", and "food photography".',
             config: {
                 responseMimeType: 'application/json',
                 responseSchema: {

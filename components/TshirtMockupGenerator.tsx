@@ -8,7 +8,7 @@ interface TshirtMockupGeneratorProps {
 
 const TshirtMockupGenerator: React.FC<TshirtMockupGeneratorProps> = ({ onSubmit, isLoading }) => {
   const [designImageUrl, setDesignImageUrl] = useState<string | null>(null);
-  const [selectedMockupUrl, setSelectedMockupUrl] = useState<string | null>(null);
+  const [selectedMockupUrl, setSelectedMockupUrl] = useState<string | null>(TSHIRT_MOCKUPS[0].url);
   const [error, setError] = useState<string | null>(null);
 
   const handleFileChange = (files: FileList | null) => {
@@ -59,7 +59,7 @@ const TshirtMockupGenerator: React.FC<TshirtMockupGeneratorProps> = ({ onSubmit,
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div>
-            <label className="block text-sm font-semibold text-gray-400 mb-2">1. Upload your design (PNG with transparency recommended)</label>
+            <label className="block text-sm font-semibold text-gray-400 mb-2">1. Upload your design</label>
             <label
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
@@ -86,7 +86,25 @@ const TshirtMockupGenerator: React.FC<TshirtMockupGeneratorProps> = ({ onSubmit,
             />
         </div>
         <div>
-            <label className="block text-sm font-semibold text-gray-400 mb-2">2. Choose a mockup</label>
+            <label className="block text-sm font-semibold text-gray-400 mb-2">2. Preview your mockup</label>
+            <div className="relative aspect-square w-full bg-gray-900 border-2 border-gray-700 rounded-lg flex items-center justify-center overflow-hidden">
+                {selectedMockupUrl && (
+                    <img src={selectedMockupUrl} alt="Selected T-shirt mockup" className="w-full h-full object-contain" />
+                )}
+                {selectedMockupUrl && designImageUrl && (
+                    <img 
+                        src={designImageUrl} 
+                        alt="Design overlay" 
+                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[65%] w-[30%] h-auto object-contain pointer-events-none transition-all"
+                    />
+                )}
+                 {!selectedMockupUrl && (
+                    <p className="text-gray-500">Select a T-shirt below to see a preview</p>
+                )}
+            </div>
+        </div>
+        <div>
+            <label className="block text-sm font-semibold text-gray-400 mb-2">3. Choose a T-shirt color</label>
             <div className="grid grid-cols-3 gap-4">
                 {TSHIRT_MOCKUPS.map(mockup => (
                     <button
@@ -95,9 +113,10 @@ const TshirtMockupGenerator: React.FC<TshirtMockupGeneratorProps> = ({ onSubmit,
                         onClick={() => setSelectedMockupUrl(mockup.url)}
                         disabled={isLoading}
                         className={`p-2 bg-gray-800 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed ${selectedMockupUrl === mockup.url ? 'ring-2 ring-indigo-500' : 'hover:bg-gray-700'}`}
+                        aria-label={`Select ${mockup.name}`}
+                        title={mockup.name}
                     >
                         <img src={mockup.url} alt={mockup.name} className="w-full h-auto object-contain rounded-md aspect-square" />
-                        <span className="text-xs text-gray-400 mt-1 block">{mockup.name}</span>
                     </button>
                 ))}
             </div>
