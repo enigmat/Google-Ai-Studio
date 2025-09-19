@@ -5,9 +5,9 @@ let ai: GoogleGenAI | null = null;
 
 // Helper to get the API key, throwing an error if it's not set.
 const getApiKey = (): string => {
-    const apiKey = process.env.VITE_API_KEY;
+    const apiKey = process.env.API_KEY;
     if (!apiKey) {
-        throw new Error("VITE_API_KEY environment variable not set. Please configure it in your Vercel project settings to use the application.");
+        throw new Error("API_KEY environment variable not set. Please configure it in your project settings (e.g., Vercel environment variables) to use the application.");
     }
     return apiKey;
 };
