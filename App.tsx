@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { generateImageFromPrompt, enhancePrompt, editImage, removeBackground, upscaleImage, expandImage, generateImageFromReference, generateUgcProductAd, generateVideoFromPrompt, generateVideoFromImage, generateImageMetadata, getPromptInspiration, generatePromptFromImage, imageAction, removeObject, generateProductScene, generateTshirtMockup } from './services/geminiService';
+import { generateImageFromPrompt, enhancePrompt, editImage, removeBackground, upscaleImage, expandImage, generateImageFromReference, generateUgcProductAd, generateVideoFromPrompt, generateVideoFromImage, generateImageMetadata, getPromptInspiration, generatePromptFromImage, imageAction, removeObject, generateProductScene, generateTshirtMockup, generateBlogPost } from './services/geminiService';
 import Header from './components/Header';
 import PromptInput from './components/PromptInput';
 import ImageDisplay from './components/ImageDisplay';
@@ -27,9 +27,11 @@ import ImageToPromptGenerator from './components/ImageToPromptGenerator';
 import CreativeChat from './components/CreativeChat';
 import ProductStudio from './components/ProductStudio';
 import TshirtMockupGenerator from './components/TshirtMockupGenerator';
+import BlogPostGenerator from './components/BlogPostGenerator';
+import BlogPostDisplay from './components/BlogPostDisplay';
 
 type AspectRatio = typeof ASPECT_RATIOS[number];
-type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup';
+type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup' | 'blog-post';
 
 const GroundingSourcesDisplay: React.FC<{ sources: any[] }> = ({ sources }) => (
     <div className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
@@ -73,6 +75,8 @@ const App: React.FC = () => {
   // Creative Chat state
   const [chatImage, setChatImage] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<string[]>([]);
+  // Blog Post state
+  const [blogPostContent, setBlogPostContent] = useState<string | null>(null);
   
   const [modalInfo, setModalInfo] = useState<{ isOpen: boolean; imageUrl: string | null }>({
     isOpen: false,
@@ -128,11 +132,12 @@ const App: React.FC = () => {
   };
   
   const handleSetMode = (newMode: GeneratorMode) => {
-    if (newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'product-studio' || newMode === 'tshirt-mockup') {
+    if (newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'product-studio' || newMode === 'tshirt-mockup' || newMode === 'blog-post') {
       setImageUrls(null);
     } else {
       setPreviewVideoUrl(null);
       setFinalVideoUrl(null);
+      setBlogPostContent(null);
     }
     if (newMode !== 'animate-image') {
       setSourceImageForVideo(null);
@@ -195,6 +200,7 @@ const App: React.FC = () => {
     setImageUrls(null);
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
+    setBlogPostContent(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
 
@@ -228,6 +234,7 @@ const App: React.FC = () => {
     setImageUrls(null);
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
+    setBlogPostContent(null);
     
     const adPrompt = `UGC ad for ${productName}: ${productDescription}`;
     
@@ -249,6 +256,7 @@ const App: React.FC = () => {
     setImageUrls(null);
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
+    setBlogPostContent(null);
 
     const mockupPrompt = `T-shirt mockup with user-provided design.`;
 
@@ -276,6 +284,7 @@ const App: React.FC = () => {
     setLoading(true);
     setError(null);
     setImageUrls(null);
+    setBlogPostContent(null);
 
     if (isPreview) {
       setPreviewVideoUrl(null);
@@ -308,6 +317,7 @@ const App: React.FC = () => {
     setLoading(true);
     setError(null);
     setImageUrls(null);
+    setBlogPostContent(null);
 
     if (isPreview) {
         setPreviewVideoUrl(null);
@@ -376,6 +386,7 @@ const App: React.FC = () => {
       setImageUrls(null);
       setFinalVideoUrl(null);
       setPreviewVideoUrl(null);
+      setBlogPostContent(null);
       setEditModalInfo({ isOpen: false, imageUrl: null, mode: 'inpaint' });
       setExpandModalInfo({ isOpen: false, imageUrl: null });
 
@@ -398,6 +409,7 @@ const App: React.FC = () => {
     setImageUrls(null);
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
+    setBlogPostContent(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
 
@@ -440,6 +452,27 @@ const App: React.FC = () => {
         setIsLoading(false);
     }
   }, [chatImage]);
+
+  const handleGenerateBlogPost = useCallback(async (topic: string, tone: string, length: string, audience: string) => {
+    setIsLoading(true);
+    setError(null);
+    setBlogPostContent(null);
+    // Clear other content types
+    setImageUrls(null);
+    setFinalVideoUrl(null);
+    setPreviewVideoUrl(null);
+    
+    try {
+      const content = await generateBlogPost(topic, tone, length, audience);
+      setBlogPostContent(content);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+      setError(`Failed to generate blog post: ${message}`);
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   const handleSaveChatImage = useCallback(() => {
     if (chatImage && chatHistory.length > 0) {
@@ -544,7 +577,7 @@ const App: React.FC = () => {
     setReferenceImageUrl(null);
   };
   
-  const isDisplayingContent = !!imageUrls || !!previewVideoUrl || !!finalVideoUrl || !!chatImage;
+  const isDisplayingContent = !!imageUrls || !!previewVideoUrl || !!finalVideoUrl || !!chatImage || !!blogPostContent;
   const isVideoMode = mode === 'text-to-video' || mode === 'animate-image';
   const isAnyVideoLoading = isLoading || isPreviewLoading;
 
@@ -698,6 +731,16 @@ const App: React.FC = () => {
               </>
             )}
 
+            {mode === 'blog-post' && (
+              <>
+                <h2 className="text-2xl font-bold text-center lg:text-left text-indigo-400">Blog Post Generator</h2>
+                <BlogPostGenerator
+                  onSubmit={handleGenerateBlogPost}
+                  isLoading={isLoading}
+                />
+              </>
+            )}
+
             {mode === 'product-studio' && (
               <>
                  <h2 className="text-2xl font-bold text-center lg:text-left text-indigo-400">AI Product Studio</h2>
@@ -810,6 +853,11 @@ const App: React.FC = () => {
                 onUpscale={() => {}}
                 onAnimateClick={() => {}}
               />
+            ) : mode === 'blog-post' ? (
+                <BlogPostDisplay
+                    content={blogPostContent}
+                    isLoading={isLoading}
+                />
             ) : (
               <ImageDisplay 
                 imageUrls={imageUrls} 
@@ -828,7 +876,7 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {mode !== 'text-to-video' && mode !== 'animate-image' && mode !== 'image-to-prompt' && mode !== 'creative-chat' && (
+      {mode !== 'text-to-video' && mode !== 'animate-image' && mode !== 'image-to-prompt' && mode !== 'creative-chat' && mode !== 'blog-post' && (
         <section className="w-full max-w-7xl mx-auto p-4 z-10">
           <SavedGallery
             images={savedImages}

@@ -5,9 +5,9 @@ let ai: GoogleGenAI | null = null;
 
 // Helper to get the API key, throwing an error if it's not set.
 const getApiKey = (): string => {
-    const apiKey = process.env.API_KEY;
+    const apiKey = process.env.VITE_API_KEY;
     if (!apiKey) {
-        throw new Error("API_KEY environment variable not set. Please configure it to use the application.");
+        throw new Error("VITE_API_KEY environment variable not set. Please configure it in your Vercel project settings to use the application.");
     }
     return apiKey;
 };
@@ -413,7 +413,7 @@ export const getPromptInspiration = async (): Promise<string[]> => {
     try {
         const response = await aiClient.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: 'Generate 5 highly detailed and visually-rich prompts for an AI image generator, one for each of the following themes in order: "sci-fi cityscape", "fantasy portrait", "abstract nature", "vintage photograph", and "food photography".',
+            contents: 'Generate 5 highly detailed and visually-rich prompts for an AI image generator, one for each of the following themes in order: "sci-fi cityscape", "fantasy portrait", "abstract nature", "vintage photograph", and "food photography". For the "vintage photograph" theme, ensure the prompt includes details that mimic the aesthetic of old photographs, such as film grain, sepia tones, faded colors, and era-appropriate subjects (e.g., from the 1920s or 1950s).',
             config: {
                 responseMimeType: 'application/json',
                 responseSchema: {
@@ -467,4 +467,39 @@ export const generatePromptFromImage = async (imageUrl: string): Promise<string>
         }
         throw new Error("An unknown error occurred while generating the prompt from the image.");
     }
+};
+
+export const generateBlogPost = async (topic: string, tone: string, length: string, audience: string): Promise<string> => {
+  const aiClient = getAiClient();
+  try {
+    const systemInstruction = `You are an expert blog post writer who outputs clean, semantic HTML. Your task is to generate a complete, well-structured, and engaging blog post based on the user's request. The post should include an <h1> for the title, <p> tags for paragraphs, <h2> tags for main headings, and a concluding paragraph. Do not include <html>, <head>, or <body> tags. Only return the HTML content for the blog post itself, ready to be embedded in a div.`;
+    
+    const contents = `Generate a blog post in HTML format with the following specifications:
+- Topic/Title: ${topic}
+- Tone of Voice: ${tone}
+- Desired Length: ${length}
+- Target Audience: ${audience}
+
+Ensure the output is only the HTML content for the blog post.`;
+
+    const response = await aiClient.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents,
+      config: {
+        systemInstruction,
+      },
+    });
+
+    if (!response.text.trim()) {
+      throw new Error("The model returned an empty blog post.");
+    }
+
+    return response.text;
+  } catch (error) {
+    console.error("Error generating blog post with Gemini API:", error);
+    if (error instanceof Error) {
+        throw new Error(`Gemini API Error: ${error.message}`);
+    }
+    throw new Error("An unknown error occurred while generating the blog post.");
+  }
 };

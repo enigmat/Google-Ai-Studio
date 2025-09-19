@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup';
+type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup' | 'blog-post';
 
 interface AIAvatarProps {
   mode: GeneratorMode;
@@ -48,6 +48,11 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
     "For best results, upload a design with a transparent background (like a .PNG file).",
     "The AI will automatically adjust your design to the wrinkles and lighting of the shirt.",
     "Try your design on different colored shirts to see what looks best!",
+  ],
+  'blog-post': [
+    "Be specific with your topic for a more focused article.",
+    "Choosing the right 'Tone of Voice' can make your post resonate with your audience.",
+    "Defining a 'Target Audience' helps me tailor the language and complexity.",
   ],
 };
 

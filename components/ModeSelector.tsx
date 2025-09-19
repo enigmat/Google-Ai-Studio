@@ -1,6 +1,6 @@
 import React from 'react';
 
-type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup';
+type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup' | 'blog-post';
 
 interface ModeSelectorProps {
   mode: GeneratorMode;
@@ -31,6 +31,12 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ mode, setMode }) => {
         className={`${commonButtonClasses} ${mode === 'image-to-prompt' ? activeButtonClasses : inactiveButtonClasses}`}
       >
         Image-to-Prompt
+      </button>
+       <button
+        onClick={() => setMode('blog-post')}
+        className={`${commonButtonClasses} ${mode === 'blog-post' ? activeButtonClasses : inactiveButtonClasses}`}
+      >
+        Blog Post
       </button>
       <button
         onClick={() => setMode('product-studio')}
