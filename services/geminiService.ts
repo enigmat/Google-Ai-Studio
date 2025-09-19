@@ -1,11 +1,11 @@
 import { GoogleGenAI, Modality, Type, GenerateContentResponse } from "@google/genai";
 
-// Ensure the API key is available, but do not handle its input in the UI.
-if (!process.env.API_KEY) {
-    // In a real app, this might be handled more gracefully, but for this context,
-    // we assume the key is set in the environment.
-    throw new Error("API_KEY environment variable not set.");
-}
+// Helper to check for API key at the beginning of each function call.
+const ensureApiKey = () => {
+    if (!process.env.API_KEY) {
+        throw new Error("API_KEY environment variable not set. Please configure it to use the application.");
+    }
+};
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -43,6 +43,7 @@ Enhanced: "IMG_2847.HEIC, portrait of an elegant woman with a genuine asymmetric
 `;
 
 export const generateImageFromPrompt = async (prompt: string, count: number, aspectRatio: '1:1' | '16:9' | '9:16', negativePrompt?: string): Promise<string[]> => {
+  ensureApiKey();
   try {
     let finalPrompt = prompt;
     if (negativePrompt && negativePrompt.trim()) {
@@ -88,6 +89,7 @@ const parseDataUrl = (dataUrl: string): { base64Data: string; mimeType: string }
 };
 
 export const generateVideoFromPrompt = async (prompt: string, durationSeconds: number, isPreview: boolean): Promise<string> => {
+    ensureApiKey();
     try {
         const config: { numberOfVideos: number; durationSeconds?: number; isPreview?: boolean } = {
             numberOfVideos: 1,
@@ -136,6 +138,7 @@ export const generateVideoFromPrompt = async (prompt: string, durationSeconds: n
 };
 
 export const generateVideoFromImage = async (imageUrl: string, prompt: string, durationSeconds: number, isPreview: boolean): Promise<string> => {
+    ensureApiKey();
     try {
         const { base64Data, mimeType } = parseDataUrl(imageUrl);
         const config: { numberOfVideos: number; durationSeconds?: number; isPreview?: boolean } = {
@@ -188,6 +191,7 @@ export const generateVideoFromImage = async (imageUrl: string, prompt: string, d
 };
 
 export const enhancePrompt = async (originalPrompt: string, useGoogleSearch: boolean): Promise<GenerateContentResponse> => {
+  ensureApiKey();
   try {
     const config: any = {
       systemInstruction: ENHANCER_SYSTEM_INSTRUCTION,
@@ -231,6 +235,7 @@ const processImageEditingResponse = (response: any): string => {
 };
 
 export const imageAction = async (originalImageUrl: string, prompt: string): Promise<string> => {
+    ensureApiKey();
     try {
         const { base64Data, mimeType } = parseDataUrl(originalImageUrl);
         const response = await ai.models.generateContent({
@@ -311,6 +316,7 @@ export const upscaleImage = (originalImageUrl: string): Promise<string> => {
 };
 
 export const generateImageMetadata = async (imageUrl: string, prompt: string): Promise<{ title: string; description: string; tags: string[] }> => {
+  ensureApiKey();
   try {
     const { base64Data, mimeType } = parseDataUrl(imageUrl);
     const response = await ai.models.generateContent({
@@ -356,6 +362,7 @@ export const generateImageMetadata = async (imageUrl: string, prompt: string): P
 };
 
 export const getPromptInspiration = async (): Promise<string[]> => {
+    ensureApiKey();
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
@@ -388,6 +395,7 @@ export const getPromptInspiration = async (): Promise<string[]> => {
 };
 
 export const generatePromptFromImage = async (imageUrl: string): Promise<string> => {
+    ensureApiKey();
     try {
         const { base64Data, mimeType } = parseDataUrl(imageUrl);
         const response = await ai.models.generateContent({
