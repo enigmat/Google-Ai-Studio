@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { generateImageFromPrompt, enhancePrompt, editImage, removeBackground, upscaleImage, expandImage, generateImageFromReference, generateUgcProductAd, generateVideoFromPrompt, generateVideoFromImage, generateImageMetadata, getPromptInspiration, generatePromptFromImage, imageAction, removeObject, generateProductScene } from './services/geminiService';
+import { generateImageFromPrompt, enhancePrompt, editImage, removeBackground, upscaleImage, expandImage, generateImageFromReference, generateUgcProductAd, generateVideoFromPrompt, generateVideoFromImage, generateImageMetadata, getPromptInspiration, generatePromptFromImage, imageAction, removeObject, generateProductScene, generateTshirtMockup } from './services/geminiService';
 import Header from './components/Header';
 import PromptInput from './components/PromptInput';
 import ImageDisplay from './components/ImageDisplay';
@@ -26,9 +26,10 @@ import AIAvatar from './components/AIAvatar';
 import ImageToPromptGenerator from './components/ImageToPromptGenerator';
 import CreativeChat from './components/CreativeChat';
 import ProductStudio from './components/ProductStudio';
+import TshirtMockupGenerator from './components/TshirtMockupGenerator';
 
 type AspectRatio = typeof ASPECT_RATIOS[number];
-type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio';
+type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup';
 
 const GroundingSourcesDisplay: React.FC<{ sources: any[] }> = ({ sources }) => (
     <div className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
@@ -127,7 +128,7 @@ const App: React.FC = () => {
   };
   
   const handleSetMode = (newMode: GeneratorMode) => {
-    if (newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'product-studio') {
+    if (newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'product-studio' || newMode === 'tshirt-mockup') {
       setImageUrls(null);
     } else {
       setPreviewVideoUrl(null);
@@ -239,6 +240,27 @@ const App: React.FC = () => {
       console.error(e);
     } finally {
       setIsLoading(false);
+    }
+  }, [handleSuccessfulGeneration]);
+
+  const handleGenerateTshirtMockup = useCallback(async (designUrl: string, mockupUrl: string) => {
+    setIsLoading(true);
+    setError(null);
+    setImageUrls(null);
+    setFinalVideoUrl(null);
+    setPreviewVideoUrl(null);
+
+    const mockupPrompt = `T-shirt mockup with user-provided design.`;
+
+    try {
+        const resultUrl = await generateTshirtMockup(designUrl, mockupUrl);
+        handleSuccessfulGeneration([resultUrl], mockupPrompt);
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+        setError(`Failed to generate T-shirt mockup: ${message}`);
+        console.error(e);
+    } finally {
+        setIsLoading(false);
     }
   }, [handleSuccessfulGeneration]);
   
@@ -685,6 +707,16 @@ const App: React.FC = () => {
                     onGenerationComplete={handleSuccessfulGeneration}
                     setIsLoading={setIsLoading}
                     setError={setError}
+                 />
+              </>
+            )}
+
+            {mode === 'tshirt-mockup' && (
+              <>
+                 <h2 className="text-2xl font-bold text-center lg:text-left text-indigo-400">T-shirt Mockup Studio</h2>
+                 <TshirtMockupGenerator 
+                    onSubmit={handleGenerateTshirtMockup}
+                    isLoading={isLoading}
                  />
               </>
             )}

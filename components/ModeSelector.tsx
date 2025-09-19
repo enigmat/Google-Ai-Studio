@@ -1,6 +1,6 @@
 import React from 'react';
 
-type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio';
+type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup';
 
 interface ModeSelectorProps {
   mode: GeneratorMode;
@@ -13,7 +13,7 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ mode, setMode }) => {
   const inactiveButtonClasses = "bg-transparent text-gray-400 hover:bg-gray-700";
   
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 w-full bg-gray-800 rounded-lg p-1 border border-gray-700">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 w-full bg-gray-800 rounded-lg p-1 border border-gray-700">
       <button
         onClick={() => setMode('text-to-image')}
         className={`${commonButtonClasses} ${mode === 'text-to-image' ? activeButtonClasses : inactiveButtonClasses}`}
@@ -37,6 +37,12 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ mode, setMode }) => {
         className={`${commonButtonClasses} ${mode === 'product-studio' ? activeButtonClasses : inactiveButtonClasses}`}
       >
         Product Studio
+      </button>
+      <button
+        onClick={() => setMode('tshirt-mockup')}
+        className={`${commonButtonClasses} ${mode === 'tshirt-mockup' ? activeButtonClasses : inactiveButtonClasses}`}
+      >
+        T-shirt Mockup
       </button>
       <button
         onClick={() => setMode('ugc-ad')}

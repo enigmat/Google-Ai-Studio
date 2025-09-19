@@ -303,6 +303,41 @@ export const generateProductScene = async (isolatedProductUrl: string, sceneProm
     return imageAction(isolatedProductUrl, prompt);
 };
 
+export const generateTshirtMockup = async (designImageUrl: string, mockupImageUrl: string): Promise<string> => {
+    const aiClient = getAiClient();
+    try {
+        const { base64Data: designData, mimeType: designMimeType } = parseDataUrl(designImageUrl);
+        const { base64Data: mockupData, mimeType: mockupMimeType } = parseDataUrl(mockupImageUrl);
+
+        const prompt = `
+            Take the secondary user-provided image (the design/logo) and realistically place it onto the chest area of the T-shirt in the primary user-provided image (the mockup photo).
+            The design must conform to the fabric's folds, texture, shadows, and lighting to look like it's naturally printed on the shirt.
+            Do not change the T-shirt's color, the background, or any other part of the mockup image. The output should be the complete mockup image with the design applied.
+        `;
+
+        const response = await aiClient.models.generateContent({
+            model: 'gemini-2.5-flash-image-preview',
+            contents: {
+                parts: [
+                    { inlineData: { data: mockupData, mimeType: mockupMimeType } }, // Primary image: the mockup
+                    { inlineData: { data: designData, mimeType: designMimeType } }, // Secondary image: the design
+                    { text: prompt },
+                ],
+            },
+            config: {
+                responseModalities: [Modality.IMAGE, Modality.TEXT],
+            },
+        });
+        return processImageEditingResponse(response);
+    } catch (error) {
+        console.error("Error generating T-shirt mockup with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred during the T-shirt mockup generation.");
+    }
+};
+
 export const editImage = (maskedImageUrl: string, prompt: string): Promise<string> => {
     // The prompt is pre-formatted by the calling function to instruct the AI about the mask
     return imageAction(maskedImageUrl, prompt);

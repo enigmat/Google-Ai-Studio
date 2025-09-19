@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-// FIX: Added 'product-studio' to the GeneratorMode type to align with App.tsx
-type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio';
+type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup';
 
 interface AIAvatarProps {
   mode: GeneratorMode;
@@ -40,11 +39,15 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
     "Motion prompts like 'gentle zoom in' or 'wind blowing softly' work great!",
     "The AI will bring your static image to life based on your words.",
   ],
-  // FIX: Added tips for the 'product-studio' mode.
   'product-studio': [
     "Upload a clear image of your product against a simple background for best background removal.",
     "Describe a scene that matches your brand's aesthetic.",
     "Try different scene prompts to see your product in various settings!",
+  ],
+  'tshirt-mockup': [
+    "For best results, upload a design with a transparent background (like a .PNG file).",
+    "The AI will automatically adjust your design to the wrinkles and lighting of the shirt.",
+    "Try your design on different colored shirts to see what looks best!",
   ],
 };
 
