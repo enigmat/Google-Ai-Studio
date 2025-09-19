@@ -1,13 +1,25 @@
 import { GoogleGenAI, Modality, Type, GenerateContentResponse } from "@google/genai";
 
-// Helper to check for API key at the beginning of each function call.
-const ensureApiKey = () => {
-    if (!process.env.API_KEY) {
+// The AI client is initialized lazily to avoid crashing the app if the API key is missing.
+let ai: GoogleGenAI | null = null;
+
+// Helper to get the API key, throwing an error if it's not set.
+const getApiKey = (): string => {
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
         throw new Error("API_KEY environment variable not set. Please configure it to use the application.");
     }
+    return apiKey;
 };
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Helper to get the AI client, initializing it on the first call.
+const getAiClient = (): GoogleGenAI => {
+    if (!ai) {
+        ai = new GoogleGenAI({ apiKey: getApiKey() });
+    }
+    return ai;
+};
+
 
 const ENHANCER_SYSTEM_INSTRUCTION = `You will take on the role as the ultimate prompt enhancer for prompts that create AI images for tools like Midjourney, Leonardo AI, DALL-E, and Stable Diffusion. You are a prompt engineering expert that can take the simplest prompts and 10X them to masterful, highly detailed levels that only you could craft.
 
@@ -43,14 +55,14 @@ Enhanced: "IMG_2847.HEIC, portrait of an elegant woman with a genuine asymmetric
 `;
 
 export const generateImageFromPrompt = async (prompt: string, count: number, aspectRatio: '1:1' | '16:9' | '9:16', negativePrompt?: string): Promise<string[]> => {
-  ensureApiKey();
+  const aiClient = getAiClient();
   try {
     let finalPrompt = prompt;
     if (negativePrompt && negativePrompt.trim()) {
         finalPrompt += `. Avoid the following: ${negativePrompt.trim()}`;
     }
 
-    const response = await ai.models.generateImages({
+    const response = await aiClient.models.generateImages({
         model: 'imagen-4.0-generate-001',
         prompt: finalPrompt,
         config: {
@@ -89,7 +101,7 @@ const parseDataUrl = (dataUrl: string): { base64Data: string; mimeType: string }
 };
 
 export const generateVideoFromPrompt = async (prompt: string, durationSeconds: number, isPreview: boolean): Promise<string> => {
-    ensureApiKey();
+    const aiClient = getAiClient();
     try {
         const config: { numberOfVideos: number; durationSeconds?: number; isPreview?: boolean } = {
             numberOfVideos: 1,
@@ -101,7 +113,7 @@ export const generateVideoFromPrompt = async (prompt: string, durationSeconds: n
             config.durationSeconds = durationSeconds;
         }
 
-        let operation = await ai.models.generateVideos({
+        let operation = await aiClient.models.generateVideos({
             model: 'veo-2.0-generate-001',
             prompt: prompt,
             config,
@@ -109,7 +121,7 @@ export const generateVideoFromPrompt = async (prompt: string, durationSeconds: n
 
         while (!operation.done) {
             await new Promise(resolve => setTimeout(resolve, 10000));
-            operation = await ai.operations.getVideosOperation({ operation: operation });
+            operation = await aiClient.operations.getVideosOperation({ operation: operation });
         }
 
         const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
@@ -119,7 +131,7 @@ export const generateVideoFromPrompt = async (prompt: string, durationSeconds: n
         }
 
         // The response.body contains the MP4 bytes. You must append an API key when fetching from the download link.
-        const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+        const response = await fetch(`${downloadLink}&key=${getApiKey()}`);
         
         if (!response.ok) {
             throw new Error(`Failed to download video file: ${response.statusText}`);
@@ -138,7 +150,7 @@ export const generateVideoFromPrompt = async (prompt: string, durationSeconds: n
 };
 
 export const generateVideoFromImage = async (imageUrl: string, prompt: string, durationSeconds: number, isPreview: boolean): Promise<string> => {
-    ensureApiKey();
+    const aiClient = getAiClient();
     try {
         const { base64Data, mimeType } = parseDataUrl(imageUrl);
         const config: { numberOfVideos: number; durationSeconds?: number; isPreview?: boolean } = {
@@ -151,7 +163,7 @@ export const generateVideoFromImage = async (imageUrl: string, prompt: string, d
             config.durationSeconds = durationSeconds;
         }
         
-        let operation = await ai.models.generateVideos({
+        let operation = await aiClient.models.generateVideos({
             model: 'veo-2.0-generate-001',
             prompt: prompt,
             image: {
@@ -163,7 +175,7 @@ export const generateVideoFromImage = async (imageUrl: string, prompt: string, d
 
         while (!operation.done) {
             await new Promise(resolve => setTimeout(resolve, 10000));
-            operation = await ai.operations.getVideosOperation({ operation: operation });
+            operation = await aiClient.operations.getVideosOperation({ operation: operation });
         }
 
         const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
@@ -172,7 +184,7 @@ export const generateVideoFromImage = async (imageUrl: string, prompt: string, d
             throw new Error("Video generation completed, but no download link was provided.");
         }
 
-        const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+        const response = await fetch(`${downloadLink}&key=${getApiKey()}`);
         
         if (!response.ok) {
             throw new Error(`Failed to download video file: ${response.statusText}`);
@@ -191,7 +203,7 @@ export const generateVideoFromImage = async (imageUrl: string, prompt: string, d
 };
 
 export const enhancePrompt = async (originalPrompt: string, useGoogleSearch: boolean): Promise<GenerateContentResponse> => {
-  ensureApiKey();
+  const aiClient = getAiClient();
   try {
     const config: any = {
       systemInstruction: ENHANCER_SYSTEM_INSTRUCTION,
@@ -201,7 +213,7 @@ export const enhancePrompt = async (originalPrompt: string, useGoogleSearch: boo
       config.tools = [{ googleSearch: {} }];
     }
 
-    const response = await ai.models.generateContent({
+    const response = await aiClient.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: `ORIGINAL PROMPT TO ENHANCE: ${originalPrompt}`,
       config,
@@ -235,10 +247,10 @@ const processImageEditingResponse = (response: any): string => {
 };
 
 export const imageAction = async (originalImageUrl: string, prompt: string): Promise<string> => {
-    ensureApiKey();
+    const aiClient = getAiClient();
     try {
         const { base64Data, mimeType } = parseDataUrl(originalImageUrl);
-        const response = await ai.models.generateContent({
+        const response = await aiClient.models.generateContent({
             model: 'gemini-2.5-flash-image-preview',
             contents: {
                 parts: [
@@ -316,10 +328,10 @@ export const upscaleImage = (originalImageUrl: string): Promise<string> => {
 };
 
 export const generateImageMetadata = async (imageUrl: string, prompt: string): Promise<{ title: string; description: string; tags: string[] }> => {
-  ensureApiKey();
+  const aiClient = getAiClient();
   try {
     const { base64Data, mimeType } = parseDataUrl(imageUrl);
-    const response = await ai.models.generateContent({
+    const response = await aiClient.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: {
         parts: [
@@ -362,9 +374,9 @@ export const generateImageMetadata = async (imageUrl: string, prompt: string): P
 };
 
 export const getPromptInspiration = async (): Promise<string[]> => {
-    ensureApiKey();
+    const aiClient = getAiClient();
     try {
-        const response = await ai.models.generateContent({
+        const response = await aiClient.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: 'Generate 5 unique, creative, and visually-rich prompts for an AI image generator. The prompts should be diverse in theme and style.',
             config: {
@@ -395,10 +407,10 @@ export const getPromptInspiration = async (): Promise<string[]> => {
 };
 
 export const generatePromptFromImage = async (imageUrl: string): Promise<string> => {
-    ensureApiKey();
+    const aiClient = getAiClient();
     try {
         const { base64Data, mimeType } = parseDataUrl(imageUrl);
-        const response = await ai.models.generateContent({
+        const response = await aiClient.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: {
                 parts: [
