@@ -3,11 +3,19 @@ import { GoogleGenAI, Modality, Type, GenerateContentResponse } from "@google/ge
 // The AI client is initialized lazily to avoid crashing the app if the API key is missing.
 let ai: GoogleGenAI | null = null;
 
+// --- API KEY MANAGEMENT ---
+// In a production environment, it is highly recommended to use a backend proxy or serverless function
+// to manage the API key securely. This prevents the key from being exposed on the client-side.
+// For this self-contained client-side application, the API key is expected to be provided
+// through a secure environment variable mechanism by the hosting platform (e.g., Vercel, Netlify).
+// This approach is suitable for demos and controlled environments but not for public-facing production apps
+// where the key could be compromised.
+
 // Helper to get the API key, throwing an error if it's not set.
 const getApiKey = (): string => {
     const apiKey = process.env.API_KEY;
     if (!apiKey) {
-        throw new Error("API_KEY environment variable not set. Please configure it in your project settings (e.g., Vercel environment variables) to use the application.");
+        throw new Error("API_KEY environment variable not set. For security, this application requires the API key to be set in a server-side environment variable (e.g., in your Vercel project settings). It should not be hardcoded in the client-side code.");
     }
     return apiKey;
 };
