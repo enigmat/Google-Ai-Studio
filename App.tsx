@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { generateImageFromPrompt, enhancePrompt, editImage, removeBackground, upscaleImage, expandImage, generateImageFromReference, generateUgcProductAd, generateVideoFromPrompt, generateVideoFromImage, generateImageMetadata, getPromptInspiration, generatePromptFromImage, imageAction, removeObject, generateProductScene, generateTshirtMockup, generateBlogPost } from './services/geminiService';
+import { saveImageToAirtable, AirtableConfig, getRandomPromptFromAirtable, getPromptsFromAirtable } from './services/airtableService';
 import Header from './components/Header';
 import PromptInput from './components/PromptInput';
 import ImageDisplay from './components/ImageDisplay';
@@ -29,9 +30,14 @@ import ProductStudio from './components/ProductStudio';
 import TshirtMockupGenerator from './components/TshirtMockupGenerator';
 import BlogPostGenerator from './components/BlogPostGenerator';
 import BlogPostDisplay from './components/BlogPostDisplay';
+import AvatarGenerator from './components/AvatarGenerator';
+import AirtableSettingsModal from './components/AirtableSettingsModal';
+import AirtablePromptLibraryModal from './components/AirtablePromptLibraryModal';
+import Toast from './components/Toast';
 
 type AspectRatio = typeof ASPECT_RATIOS[number];
-type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup' | 'blog-post';
+type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup' | 'blog-post' | 'avatar-generator';
+type ToastState = { show: boolean; message: string; type: 'success' | 'error' };
 
 const GroundingSourcesDisplay: React.FC<{ sources: any[] }> = ({ sources }) => (
     <div className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
@@ -50,9 +56,11 @@ const GroundingSourcesDisplay: React.FC<{ sources: any[] }> = ({ sources }) => (
 
 const App: React.FC = () => {
   const [prompt, setPrompt] = useState<string>('');
+  const [promptBeforeEnhance, setPromptBeforeEnhance] = useState<string | null>(null);
   const [negativePrompt, setNegativePrompt] = useState<string>('');
   const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
   const [imageUrls, setImageUrls] = useState<string[] | null>(null);
+  const [generatedImagesData, setGeneratedImagesData] = useState<SavedImage[]>([]);
   const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
   const [finalVideoUrl, setFinalVideoUrl] = useState<string | null>(null);
   const [videoDuration, setVideoDuration] = useState<number>(4);
@@ -65,6 +73,7 @@ const App: React.FC = () => {
   const [isPreviewLoading, setIsPreviewLoading] = useState<boolean>(false);
   const [isEnhancing, setIsEnhancing] = useState<boolean>(false);
   const [isInspiring, setIsInspiring] = useState<boolean>(false);
+  const [isFetchingFromAirtable, setIsFetchingFromAirtable] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [savedImages, setSavedImages] = useState<SavedImage[]>([]);
   const [mode, setMode] = useState<GeneratorMode>('text-to-image');
@@ -72,11 +81,19 @@ const App: React.FC = () => {
   const [useGoogleSearch, setUseGoogleSearch] = useState<boolean>(false);
   const [groundingSources, setGroundingSources] = useState<any[] | null>(null);
   const [inspirationPrompts, setInspirationPrompts] = useState<string[]>([]);
+  // Video state
+  const [videoPrompt, setVideoPrompt] = useState<string>('');
   // Creative Chat state
   const [chatImage, setChatImage] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<string[]>([]);
   // Blog Post state
   const [blogPostContent, setBlogPostContent] = useState<string | null>(null);
+  // Airtable state
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isPromptLibraryOpen, setIsPromptLibraryOpen] = useState(false);
+  const [airtableConfig, setAirtableConfig] = useState<AirtableConfig | null>(null);
+  const [savingToAirtableState, setSavingToAirtableState] = useState<{ status: 'idle' | 'saving'; imageId: string | null }>({ status: 'idle', imageId: null });
+  const [toast, setToast] = useState<ToastState>({ show: false, message: '', type: 'success' });
   
   const [modalInfo, setModalInfo] = useState<{ isOpen: boolean; imageUrl: string | null }>({
     isOpen: false,
@@ -94,20 +111,23 @@ const App: React.FC = () => {
   const [showSaveConfirmation, setShowSaveConfirmation] = useState<boolean>(false);
 
   const STORAGE_KEY = 'ai-generated-images-v2';
+  const AIRTABLE_CONFIG_KEY = 'airtable-config';
 
   useEffect(() => {
     try {
       const savedImagesJson = localStorage.getItem(STORAGE_KEY);
       if (savedImagesJson) {
         const parsed = JSON.parse(savedImagesJson);
-        // Basic validation to ensure it's the new format
         if (Array.isArray(parsed) && (parsed.length === 0 || (typeof parsed[0] === 'object' && 'url' in parsed[0]))) {
             setSavedImages(parsed);
         }
       }
+      const airtableConfigJson = localStorage.getItem(AIRTABLE_CONFIG_KEY);
+      if (airtableConfigJson) {
+          setAirtableConfig(JSON.parse(airtableConfigJson));
+      }
     } catch (err) {
-      console.error("Failed to load images from local storage:", err);
-      setError("Could not load previously saved images.");
+      console.error("Failed to load data from local storage:", err);
     }
   }, []);
   
@@ -125,6 +145,11 @@ const App: React.FC = () => {
 
   const saveConfirmationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
+  const showToast = (message: string, type: 'success' | 'error', duration = 3000) => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), duration);
+  };
+
   const handleResetChat = () => {
       setChatImage(null);
       setChatHistory([]);
@@ -132,12 +157,16 @@ const App: React.FC = () => {
   };
   
   const handleSetMode = (newMode: GeneratorMode) => {
-    if (newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'product-studio' || newMode === 'tshirt-mockup' || newMode === 'blog-post') {
+    if (newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'product-studio' || newMode === 'tshirt-mockup' || newMode === 'blog-post' || newMode === 'avatar-generator') {
       setImageUrls(null);
+      setGeneratedImagesData([]);
     } else {
       setPreviewVideoUrl(null);
       setFinalVideoUrl(null);
       setBlogPostContent(null);
+    }
+    if (newMode === 'avatar-generator') {
+      setAspectRatio('1:1');
     }
     if (newMode !== 'animate-image') {
       setSourceImageForVideo(null);
@@ -150,6 +179,7 @@ const App: React.FC = () => {
 
   const handleSuccessfulGeneration = useCallback(async (urls: string[], usedPrompt: string) => {
       setImageUrls(urls);
+      setGeneratedImagesData([]);
       
       const showSaveToast = () => {
         if (saveConfirmationTimeoutRef.current) clearTimeout(saveConfirmationTimeoutRef.current);
@@ -167,10 +197,12 @@ const App: React.FC = () => {
                 id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                 url,
                 prompt: usedPrompt,
+                originalPrompt: promptBeforeEnhance,
                 ...metadata,
             };
         }));
 
+        setGeneratedImagesData(newSavedImages);
         setSavedImages(currentSaved => {
             const updatedSaved = [...newSavedImages, ...currentSaved];
             try {
@@ -188,7 +220,7 @@ const App: React.FC = () => {
       } finally {
         setIsGeneratingMetadata(false);
       }
-  }, []);
+  }, [promptBeforeEnhance]);
 
   const handleGenerateImage = useCallback(async () => {
     if (!prompt.trim()) {
@@ -198,6 +230,7 @@ const App: React.FC = () => {
     setIsLoading(true);
     setError(null);
     setImageUrls(null);
+    setGeneratedImagesData([]);
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
@@ -225,13 +258,40 @@ const App: React.FC = () => {
       console.error(e);
     } finally {
       setIsLoading(false);
+      setPromptBeforeEnhance(null);
     }
   }, [prompt, negativePrompt, referenceImageUrl, imageCount, selectedStyle, aspectRatio, handleSuccessfulGeneration]);
   
+  const handleGenerateAvatar = useCallback(async (avatarPrompt: string) => {
+    setIsLoading(true);
+    setError(null);
+    setImageUrls(null);
+    setGeneratedImagesData([]);
+    setFinalVideoUrl(null);
+    setPreviewVideoUrl(null);
+    setBlogPostContent(null);
+    setGroundingSources(null);
+    setInspirationPrompts([]);
+
+    try {
+      // Avatars are always 1 image at 1:1
+      const generatedImageUrls = await generateImageFromPrompt(avatarPrompt, 1, '1:1', '');
+      handleSuccessfulGeneration(generatedImageUrls, avatarPrompt);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+      setError(`Failed to generate avatar: ${message}`);
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+      setPromptBeforeEnhance(null);
+    }
+  }, [handleSuccessfulGeneration]);
+
   const handleGenerateUgcAd = useCallback(async (productImageUrl: string, productName: string, productDescription: string) => {
     setIsLoading(true);
     setError(null);
     setImageUrls(null);
+    setGeneratedImagesData([]);
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
@@ -247,6 +307,7 @@ const App: React.FC = () => {
       console.error(e);
     } finally {
       setIsLoading(false);
+      setPromptBeforeEnhance(null);
     }
   }, [handleSuccessfulGeneration]);
 
@@ -254,6 +315,7 @@ const App: React.FC = () => {
     setIsLoading(true);
     setError(null);
     setImageUrls(null);
+    setGeneratedImagesData([]);
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
@@ -269,10 +331,11 @@ const App: React.FC = () => {
         console.error(e);
     } finally {
         setIsLoading(false);
+        setPromptBeforeEnhance(null);
     }
   }, [handleSuccessfulGeneration]);
   
-  const handleGenerateVideo = useCallback(async (videoPrompt: string, isPreview: boolean) => {
+  const handleGenerateVideo = useCallback(async (isPreview: boolean) => {
     if (!videoPrompt.trim()) {
       setError('Please enter a prompt for the video.');
       return;
@@ -284,6 +347,7 @@ const App: React.FC = () => {
     setLoading(true);
     setError(null);
     setImageUrls(null);
+    setGeneratedImagesData([]);
     setBlogPostContent(null);
 
     if (isPreview) {
@@ -308,7 +372,7 @@ const App: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [videoDuration, videoStyle]);
+  }, [videoPrompt, videoDuration, videoStyle]);
 
   const handleGenerateVideoFromImage = useCallback(async (imageUrl: string, motionPrompt: string, isPreview: boolean) => {
     const setLoading = isPreview ? setIsPreviewLoading : setIsLoading;
@@ -317,6 +381,7 @@ const App: React.FC = () => {
     setLoading(true);
     setError(null);
     setImageUrls(null);
+    setGeneratedImagesData([]);
     setBlogPostContent(null);
 
     if (isPreview) {
@@ -343,8 +408,8 @@ const App: React.FC = () => {
     }
   }, [videoDuration, videoStyle]);
 
-  const handleEnhancePrompt = useCallback(async () => {
-    if (!prompt.trim()) {
+  const handleEnhance = useCallback(async (promptToEnhance: string, setPromptFn: (newPrompt: string) => void) => {
+    if (!promptToEnhance.trim()) {
       setError('Please enter a prompt to enhance.');
       return;
     }
@@ -353,8 +418,8 @@ const App: React.FC = () => {
     setGroundingSources(null);
 
     try {
-      const response = await enhancePrompt(prompt, useGoogleSearch);
-      setPrompt(response.text);
+      const response = await enhancePrompt(promptToEnhance, useGoogleSearch);
+      setPromptFn(response.text);
       setGroundingSources(response.candidates?.[0]?.groundingMetadata?.groundingChunks || null);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
@@ -363,7 +428,12 @@ const App: React.FC = () => {
     } finally {
       setIsEnhancing(false);
     }
-  }, [prompt, useGoogleSearch]);
+  }, [useGoogleSearch]);
+  
+  const handleEnhancePrompt = useCallback(async () => {
+    setPromptBeforeEnhance(prompt);
+    handleEnhance(prompt, setPrompt);
+  }, [prompt, handleEnhance]);
 
    const handleGetInspiration = useCallback(async () => {
     setIsInspiring(true);
@@ -380,10 +450,44 @@ const App: React.FC = () => {
     }
   }, []);
 
+  const handleGetRandomPromptFromAirtable = useCallback(async () => {
+    if (!airtableConfig) {
+      showToast('Please configure your Airtable settings first.', 'error');
+      setIsSettingsModalOpen(true);
+      return;
+    }
+    setIsFetchingFromAirtable(true);
+    setError(null);
+    setInspirationPrompts([]); // Clear other prompts
+    setGroundingSources(null);
+    try {
+      const randomPrompt = await getRandomPromptFromAirtable(airtableConfig);
+      setPrompt(randomPrompt);
+      setPromptBeforeEnhance(null); // Clear any old "original" prompt
+      showToast('Prompt loaded from Airtable!', 'success');
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'An unknown error occurred.';
+      setError(`Failed to get prompt from Airtable: ${message}`);
+      console.error(e);
+    } finally {
+      setIsFetchingFromAirtable(false);
+    }
+  }, [airtableConfig]);
+  
+  const handleSelectAirtablePrompt = (selectedPrompt: string) => {
+    setPrompt(selectedPrompt);
+    setIsPromptLibraryOpen(false);
+    setPromptBeforeEnhance(null);
+    setInspirationPrompts([]);
+    setGroundingSources(null);
+    showToast('Prompt selected from your library!', 'success');
+  };
+
   const handleImageAction = useCallback(async (action: (...args: any[]) => Promise<string>, ...args: any[]) => {
       setIsLoading(true);
       setError(null);
       setImageUrls(null);
+      setGeneratedImagesData([]);
       setFinalVideoUrl(null);
       setPreviewVideoUrl(null);
       setBlogPostContent(null);
@@ -400,6 +504,7 @@ const App: React.FC = () => {
           console.error(e);
       } finally {
           setIsLoading(false);
+          setPromptBeforeEnhance(null);
       }
   }, [handleSuccessfulGeneration]);
   
@@ -407,6 +512,7 @@ const App: React.FC = () => {
     setIsLoading(true);
     setError(null);
     setImageUrls(null);
+    setGeneratedImagesData([]);
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
@@ -417,6 +523,7 @@ const App: React.FC = () => {
       const generatedPrompt = await generatePromptFromImage(imageUrl);
       setPrompt(generatedPrompt);
       setImageUrls([imageUrl]); // Show the source image as context
+      setGeneratedImagesData([]);
       setMode('text-to-image'); // Switch back to T2I mode
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e: unknown) {
@@ -425,6 +532,7 @@ const App: React.FC = () => {
       console.error(e);
     } finally {
       setIsLoading(false);
+      setPromptBeforeEnhance(null);
     }
   }, []);
     
@@ -459,6 +567,7 @@ const App: React.FC = () => {
     setBlogPostContent(null);
     // Clear other content types
     setImageUrls(null);
+    setGeneratedImagesData([]);
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
     
@@ -480,6 +589,32 @@ const App: React.FC = () => {
         handleSuccessfulGeneration([chatImage], `Chat creation: ${fullPromptHistory}`);
     }
   }, [chatImage, chatHistory, handleSuccessfulGeneration]);
+
+  const handleSaveToAirtable = useCallback(async (image: SavedImage) => {
+    if (!airtableConfig) {
+      showToast('Please configure your Airtable settings first.', 'error');
+      setIsSettingsModalOpen(true);
+      return;
+    }
+    setSavingToAirtableState({ status: 'saving', imageId: image.id });
+    try {
+      await saveImageToAirtable(airtableConfig, image);
+      showToast(`Image "${image.title}" saved to Airtable.`, 'success');
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'An unknown error occurred.';
+      showToast(`Error saving to Airtable: ${message}`, 'error', 5000);
+      console.error(e);
+    } finally {
+      setSavingToAirtableState({ status: 'idle', imageId: null });
+    }
+  }, [airtableConfig]);
+  
+  const handleSaveAirtableConfig = (config: AirtableConfig) => {
+    setAirtableConfig(config);
+    localStorage.setItem(AIRTABLE_CONFIG_KEY, JSON.stringify(config));
+    setIsSettingsModalOpen(false);
+    showToast('Airtable settings saved!', 'success');
+  };
 
   const handleConfirmEdit = (originalImageUrl: string, maskedImageUrl: string, editPrompt: string) => {
     if (editModalInfo.mode === 'inpaint') {
@@ -519,8 +654,8 @@ const App: React.FC = () => {
     setGroundingSources(null);
   };
 
-  const handleDeleteSavedImage = (indexToDelete: number) => {
-    const updatedImages = savedImages.filter((_, index) => index !== indexToDelete);
+  const handleDeleteSavedImage = (idToDelete: string) => {
+    const updatedImages = savedImages.filter(image => image.id !== idToDelete);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedImages));
       setSavedImages(updatedImages);
@@ -661,7 +796,7 @@ const App: React.FC = () => {
         }
       `}</style>
       
-      <Header />
+      <Header onSettingsClick={() => setIsSettingsModalOpen(true)} />
       
       <main className="flex-grow flex flex-col items-center justify-center p-4 z-10">
         <div className="w-full max-w-4xl flex flex-col lg:flex-row gap-8">
@@ -681,14 +816,19 @@ const App: React.FC = () => {
                 <PromptInput
                   prompt={prompt}
                   setPrompt={setPrompt}
+                  setPromptBeforeEnhance={setPromptBeforeEnhance}
                   negativePrompt={negativePrompt}
                   setNegativePrompt={setNegativePrompt}
                   onSubmit={handleGenerateImage}
                   onEnhance={handleEnhancePrompt}
                   onInspire={handleGetInspiration}
+                  onGetRandomFromAirtable={handleGetRandomPromptFromAirtable}
+                  onBrowseAirtable={() => setIsPromptLibraryOpen(true)}
                   isLoading={isLoading}
                   isEnhancing={isEnhancing}
                   isInspiring={isInspiring}
+                  isFetchingFromAirtable={isFetchingFromAirtable}
+                  airtableConfigured={!!airtableConfig}
                   useGoogleSearch={useGoogleSearch}
                   setUseGoogleSearch={setUseGoogleSearch}
                   inspirationPrompts={inspirationPrompts}
@@ -714,6 +854,16 @@ const App: React.FC = () => {
                   />
                 </div>
                 <ExamplePrompts onSelectPrompt={handleSelectPrompt} isLoading={isLoading || isEnhancing} />
+              </>
+            )}
+
+            {mode === 'avatar-generator' && (
+              <>
+                <h2 className="text-2xl font-bold text-center lg:text-left text-indigo-400">Avatar Generator</h2>
+                <AvatarGenerator
+                  onSubmit={handleGenerateAvatar}
+                  isLoading={isLoading}
+                />
               </>
             )}
             
@@ -778,20 +928,25 @@ const App: React.FC = () => {
               <>
                  <h2 className="text-2xl font-bold text-center lg:text-left text-indigo-400">Describe the video you want to create</h2>
                  <VideoGenerator 
+                    prompt={videoPrompt}
+                    setPrompt={setVideoPrompt}
                     onSubmit={handleGenerateVideo}
+                    onEnhance={() => handleEnhance(videoPrompt, setVideoPrompt)}
+                    isEnhancing={isEnhancing}
                     isLoading={isLoading}
                     isPreviewLoading={isPreviewLoading}
                     hasPreview={!!previewVideoUrl}
                  />
+                 {groundingSources && <GroundingSourcesDisplay sources={groundingSources} />}
                  <VideoStyleSelector
                     selectedStyle={videoStyle}
                     setSelectedStyle={setVideoStyle}
-                    isLoading={isAnyVideoLoading}
+                    isLoading={isAnyVideoLoading || isEnhancing}
                  />
                  <VideoDurationSelector 
                     duration={videoDuration}
                     setDuration={setVideoDuration}
-                    isLoading={isAnyVideoLoading}
+                    isLoading={isAnyVideoLoading || isEnhancing}
                  />
               </>
             )}
@@ -841,17 +996,10 @@ const App: React.FC = () => {
               />
             ) : mode === 'creative-chat' ? (
               <ImageDisplay
-                imageUrls={chatImage ? [chatImage] : null}
+                imagesData={chatImage ? [{id: 'chat', url: chatImage, title:'', description:'', prompt:'', tags:[]}] : []}
                 isLoading={isLoading}
                 aspectRatio="1:1"
                 hideActions={true}
-                onDownloadClick={() => {}} // Dummy handlers
-                onEditClick={() => {}}
-                onRemoveObjectClick={() => {}}
-                onExpandClick={() => {}}
-                onRemoveBackground={() => {}}
-                onUpscale={() => {}}
-                onAnimateClick={() => {}}
               />
             ) : mode === 'blog-post' ? (
                 <BlogPostDisplay
@@ -860,7 +1008,7 @@ const App: React.FC = () => {
                 />
             ) : (
               <ImageDisplay 
-                imageUrls={imageUrls} 
+                imagesData={generatedImagesData}
                 isLoading={isLoading} 
                 aspectRatio={aspectRatio}
                 onDownloadClick={handleOpenDownloadModal}
@@ -870,6 +1018,9 @@ const App: React.FC = () => {
                 onRemoveBackground={handleRemoveBackground}
                 onUpscale={handleUpscaleImage}
                 onAnimateClick={handleAnimateImage}
+                onSaveToAirtable={handleSaveToAirtable}
+                airtableConfigured={!!airtableConfig}
+                savingToAirtableState={savingToAirtableState}
               />
             )}
           </div>
@@ -889,6 +1040,9 @@ const App: React.FC = () => {
             onRemoveBackground={handleRemoveBackground}
             onUpscale={handleUpscaleImage}
             onSetReference={handleSetReferenceImage}
+            onSaveToAirtable={handleSaveToAirtable}
+            airtableConfigured={!!airtableConfig}
+            savingToAirtableState={savingToAirtableState}
             showSaveConfirmation={showSaveConfirmation}
             isGeneratingMetadata={isGeneratingMetadata}
           />
@@ -897,6 +1051,23 @@ const App: React.FC = () => {
       
       <Footer />
       
+      <AirtableSettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        onSave={handleSaveAirtableConfig}
+        currentConfig={airtableConfig}
+      />
+      
+      {airtableConfig && (
+        <AirtablePromptLibraryModal
+            isOpen={isPromptLibraryOpen}
+            onClose={() => setIsPromptLibraryOpen(false)}
+            onSelectPrompt={handleSelectAirtablePrompt}
+            config={airtableConfig}
+            getPrompts={getPromptsFromAirtable}
+        />
+      )}
+
       <DownloadModal
         isOpen={modalInfo.isOpen}
         imageUrl={modalInfo.imageUrl}
@@ -923,8 +1094,14 @@ const App: React.FC = () => {
       <AIAvatar
         mode={mode}
         error={error}
-        isLoading={isLoading}
+        isLoading={isLoading || isFetchingFromAirtable}
         isPreviewLoading={isPreviewLoading}
+      />
+      
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        show={toast.show}
       />
     </div>
   );

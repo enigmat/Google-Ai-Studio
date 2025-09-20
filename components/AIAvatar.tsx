@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup' | 'blog-post';
+type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup' | 'blog-post' | 'avatar-generator';
 
 interface AIAvatarProps {
   mode: GeneratorMode;
@@ -14,6 +14,11 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
     "Try using the 'Enhance Prompt' button for more detailed images!",
     "Experiment with different artistic styles to change the look.",
     "Negative prompts help you remove unwanted elements from your image.",
+  ],
+  'avatar-generator': [
+    "Combine different options to create a unique character!",
+    "The 'Photorealistic' style can create some amazing portraits.",
+    "Try adding specific accessories like 'a silver necklace' or 'cybernetic eye patch' for more detail.",
   ],
   'creative-chat': [
     "Start by describing an image. Then, tell me what to change!",

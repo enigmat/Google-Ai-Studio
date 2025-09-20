@@ -34,3 +34,16 @@ export const TSHIRT_MOCKUPS = [
 export const BLOG_TONES = ['Professional', 'Casual', 'Enthusiastic', 'Informative', 'Formal', 'Humorous'];
 
 export const BLOG_LENGTHS = ['Short (~300 words)', 'Medium (~600 words)', 'Long (~1000 words)'];
+
+export const AVATAR_GENDERS = ['Male', 'Female', 'Non-binary'];
+export const AVATAR_AGES = ['Child', 'Teenager', 'Young Adult', 'Adult', 'Elderly'];
+export const AVATAR_HAIR_STYLES = ['Short', 'Medium', 'Long', 'Bald', 'Buzzcut', 'Curly', 'Straight', 'Wavy', 'Braids'];
+export const AVATAR_COLORS = ['Black', 'Brown', 'Blonde', 'Red', 'Grey', 'White', 'Blue', 'Green', 'Pink', 'Purple'];
+export const AVATAR_ART_STYLES = [
+  { name: 'Photorealistic', value: 'hyperrealistic portrait, photorealistic, 8K HDR, professional photography, sharp focus, detailed skin texture' },
+  { name: 'Anime', value: 'anime art style, cel shaded, vibrant colors, detailed eyes, masterpiece, from a high-budget anime film' },
+  { name: 'Cartoon', value: 'disney pixar style, cartoon character, 3d render, vibrant, cute' },
+  { name: 'Pixel Art', value: '16-bit pixel art character portrait, detailed, vibrant colors' },
+  { name: 'Fantasy Art', value: 'fantasy art portrait, D&D character art, epic, magical, detailed armor' },
+  { name: 'Watercolor', value: 'watercolor painting portrait, soft wash, paper texture, artistic' }
+];
