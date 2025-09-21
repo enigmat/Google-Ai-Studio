@@ -44,11 +44,12 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ mode, setMode }) => {
       {/* Category: Content & Marketing */}
       <div>
         <h3 className="text-sm font-semibold text-gray-500 mb-2 px-1">Content & Marketing</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 w-full bg-gray-800 rounded-lg p-1 border border-gray-700">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1 w-full bg-gray-800 rounded-lg p-1 border border-gray-700">
             <ModeButton currentMode={mode} targetMode="product-studio" setMode={setMode}>Product Studio</ModeButton>
             <ModeButton currentMode={mode} targetMode="tshirt-mockup" setMode={setMode}>T-shirt Mockup</ModeButton>
             <ModeButton currentMode={mode} targetMode="ugc-ad" setMode={setMode}>UGC Ad</ModeButton>
             <ModeButton currentMode={mode} targetMode="blog-post" setMode={setMode}>Blog Post</ModeButton>
+            <ModeButton currentMode={mode} targetMode="social-media-post" setMode={setMode}>Social Media</ModeButton>
         </div>
       </div>
       

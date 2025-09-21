@@ -60,6 +60,11 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
     "Choosing the right 'Tone of Voice' can make your post resonate with your audience.",
     "Defining a 'Target Audience' helps me tailor the language and complexity.",
   ],
+  'social-media-post': [
+    "Select the right platform! The AI tailors the post length and style for Twitter/X, LinkedIn, or Instagram.",
+    "Click 'Generate Image' on a post to create a perfectly matched visual for it!",
+    "Don't like the first few options? Just click 'Generate Posts' again for a fresh batch of ideas.",
+  ],
 };
 
 const LOADING_TIPS = [

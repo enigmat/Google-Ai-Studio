@@ -1,9 +1,5 @@
 
 
-
-
-
-
 import { GoogleGenAI, Modality, Type, GenerateContentResponse } from "@google/genai";
 
 // The AI client is initialized lazily to avoid crashing the app if the API key is missing.
@@ -533,5 +529,82 @@ Ensure the output is only the HTML content for the blog post.`;
         throw new Error(`Gemini API Error: ${error.message}`);
     }
     throw new Error("An unknown error occurred while generating the blog post.");
+  }
+};
+
+export interface SocialMediaPost {
+    post_text: string;
+    hashtags: string[];
+    platform: string; // To be added client-side
+}
+
+export const generateSocialMediaPost = async (topic: string, platform: string, tone: string, audience: string, includeHashtags: boolean, includeEmojis: boolean): Promise<SocialMediaPost[]> => {
+  const aiClient = getAiClient();
+  try {
+    const systemInstruction = `You are a social media marketing expert. Your task is to generate 3 distinct, engaging social media posts based on the user's request. You must tailor each post to the specified platform, respecting its conventions and character limits (e.g., Twitter/X is concise, LinkedIn is professional, Instagram is visual-focused).`;
+    
+    let prompt = `Generate 3 social media posts for the platform: ${platform}.
+- Topic: ${topic}
+- Tone of Voice: ${tone}`;
+
+    if (audience) {
+      prompt += `\n- Target Audience: ${audience}`;
+    }
+    if (includeHashtags) {
+      prompt += `\n- Include relevant hashtags for discoverability.`;
+    } else {
+      prompt += `\n- Do not include any hashtags.`;
+    }
+    if (includeEmojis) {
+      prompt += `\n- Use emojis where appropriate to increase engagement.`;
+    } else {
+      prompt += `\n- Do not use any emojis.`;
+    }
+
+    const response = await aiClient.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        systemInstruction,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.ARRAY,
+          description: 'A list of 3 social media post variations.',
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              post_text: {
+                type: Type.STRING,
+                description: 'The main content of the social media post.'
+              },
+              hashtags: {
+                type: Type.ARRAY,
+                description: 'An array of relevant hashtags, without the # symbol.',
+                items: { type: Type.STRING }
+              }
+            }
+          }
+        }
+      },
+    });
+
+    if (!response.text.trim()) {
+      throw new Error("The model returned an empty response for social media posts.");
+    }
+    
+    const parsedPosts = JSON.parse(response.text);
+    if (!Array.isArray(parsedPosts) || parsedPosts.length === 0) {
+        throw new Error("The model did not return a valid array of posts.");
+    }
+
+    // Add platform info to each post for the UI
+    return parsedPosts.map(post => ({ ...post, platform }));
+
+  } catch (error) {
+    console.error("Error generating social media post with Gemini API:", error);
+    if (error instanceof Error) {
+        throw new Error(`Gemini API Error: ${error.message}`);
+    }
+    throw new Error("An unknown error occurred while generating the social media post.");
   }
 };

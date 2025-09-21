@@ -1,8 +1,6 @@
 
 
-
-
-export type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup' | 'blog-post' | 'avatar-generator';
+export type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup' | 'blog-post' | 'social-media-post' | 'avatar-generator';
 
 export const EXAMPLE_PROMPTS = [
   "A majestic lion with a cosmic mane",
@@ -38,6 +36,7 @@ export const TSHIRT_MOCKUPS = [
 ];
 
 export const BLOG_TONES = ['Professional', 'Casual', 'Enthusiastic', 'Informative', 'Formal', 'Humorous'];
+export const SOCIAL_MEDIA_PLATFORMS = ['Twitter/X', 'LinkedIn', 'Instagram'];
 
 export const BLOG_LENGTHS = ['Short (~300 words)', 'Medium (~600 words)', 'Long (~1000 words)'];
 

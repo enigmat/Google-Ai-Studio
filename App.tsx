@@ -1,7 +1,7 @@
 
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { generateImageFromPrompt, enhancePrompt, editImage, removeBackground, upscaleImage, expandImage, generateImageFromReference, generateUgcProductAd, generateVideoFromPrompt, generateVideoFromImage, generateImageMetadata, getPromptInspiration, generatePromptFromImage, imageAction, removeObject, generateProductScene, generateTshirtMockup, generateBlogPost } from './services/geminiService';
+import { generateImageFromPrompt, enhancePrompt, editImage, removeBackground, upscaleImage, expandImage, generateImageFromReference, generateUgcProductAd, generateVideoFromPrompt, generateVideoFromImage, generateImageMetadata, getPromptInspiration, generatePromptFromImage, imageAction, removeObject, generateProductScene, generateTshirtMockup, generateBlogPost, generateSocialMediaPost, SocialMediaPost } from './services/geminiService';
 import { saveImageToAirtable, AirtableConfig, getRandomPromptFromAirtable, getPromptsFromAirtable, updateAirtableRecord } from './services/airtableService';
 import Header from './components/Header';
 import PromptInput from './components/PromptInput';
@@ -36,6 +36,8 @@ import AvatarGenerator from './components/AvatarGenerator';
 import AirtableSettingsModal from './components/AirtableSettingsModal';
 import AirtablePromptLibraryModal from './components/AirtablePromptLibraryModal';
 import Toast from './components/Toast';
+import SocialMediaPostGenerator from './components/SocialMediaPostGenerator';
+import SocialMediaPostDisplay from './components/SocialMediaPostDisplay';
 
 type AspectRatio = typeof ASPECT_RATIOS[number];
 type ToastState = { show: boolean; message: string; type: 'success' | 'error' };
@@ -94,6 +96,8 @@ const App: React.FC = () => {
   const [chatHistory, setChatHistory] = useState<string[]>([]);
   // Blog Post state
   const [blogPostContent, setBlogPostContent] = useState<string | null>(null);
+  // Social Media state
+  const [socialMediaPosts, setSocialMediaPosts] = useState<SocialMediaPost[] | null>(null);
   // Airtable state
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isPromptLibraryOpen, setIsPromptLibraryOpen] = useState(false);
@@ -165,13 +169,14 @@ const App: React.FC = () => {
   };
   
   const handleSetMode = (newMode: GeneratorMode) => {
-    if (newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'product-studio' || newMode === 'tshirt-mockup' || newMode === 'blog-post' || newMode === 'avatar-generator') {
+    if (newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'product-studio' || newMode === 'tshirt-mockup' || ['blog-post', 'social-media-post'].includes(newMode) || newMode === 'avatar-generator') {
       setImageUrls(null);
       setGeneratedImagesData([]);
     } else {
       setPreviewVideoUrl(null);
       setFinalVideoUrl(null);
       setBlogPostContent(null);
+      setSocialMediaPosts(null);
     }
     if (newMode === 'avatar-generator') {
       setAspectRatio('9:16');
@@ -242,6 +247,7 @@ const App: React.FC = () => {
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
+    setSocialMediaPosts(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
 
@@ -278,6 +284,7 @@ const App: React.FC = () => {
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
+    setSocialMediaPosts(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
 
@@ -310,6 +317,7 @@ const App: React.FC = () => {
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
+    setSocialMediaPosts(null);
     
     const adPrompt = `UGC ad for ${productName}: ${productDescription}`;
     
@@ -334,6 +342,7 @@ const App: React.FC = () => {
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
+    setSocialMediaPosts(null);
 
     const mockupPrompt = `T-shirt mockup with user-provided design.`;
 
@@ -364,6 +373,7 @@ const App: React.FC = () => {
     setImageUrls(null);
     setGeneratedImagesData([]);
     setBlogPostContent(null);
+    setSocialMediaPosts(null);
 
     if (isPreview) {
       setPreviewVideoUrl(null);
@@ -398,6 +408,7 @@ const App: React.FC = () => {
     setImageUrls(null);
     setGeneratedImagesData([]);
     setBlogPostContent(null);
+    setSocialMediaPosts(null);
 
     if (isPreview) {
         setPreviewVideoUrl(null);
@@ -538,6 +549,7 @@ const App: React.FC = () => {
       setFinalVideoUrl(null);
       setPreviewVideoUrl(null);
       setBlogPostContent(null);
+      setSocialMediaPosts(null);
       setEditModalInfo({ isOpen: false, imageUrl: null, mode: 'inpaint' });
       setExpandModalInfo({ isOpen: false, imageUrl: null });
       setAirtableRecord(null); // Image actions create new content, so clear the prompt context
@@ -564,6 +576,7 @@ const App: React.FC = () => {
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
+    setSocialMediaPosts(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
     setAirtableRecord(null);
@@ -614,6 +627,7 @@ const App: React.FC = () => {
     setIsLoading(true);
     setError(null);
     setBlogPostContent(null);
+    setSocialMediaPosts(null);
     // Clear other content types
     setImageUrls(null);
     setGeneratedImagesData([]);
@@ -630,6 +644,51 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  const handleGenerateSocialMediaPost = useCallback(async (topic: string, platform: string, tone: string, audience: string, includeHashtags: boolean, includeEmojis: boolean) => {
+    setIsLoading(true);
+    setError(null);
+    setBlogPostContent(null);
+    setSocialMediaPosts(null);
+    // Clear other content types
+    setImageUrls(null);
+    setGeneratedImagesData([]);
+    setFinalVideoUrl(null);
+    setPreviewVideoUrl(null);
+    
+    try {
+      const posts = await generateSocialMediaPost(topic, platform, tone, audience, includeHashtags, includeEmojis);
+      setSocialMediaPosts(posts);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+      setError(`Failed to generate social media post: ${message}`);
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const handleGenerateImageForPost = useCallback((postText: string, platform: string) => {
+    const newPrompt = `A visually appealing, high-quality image for a social media post about: "${postText}". The style should be modern, engaging, and suitable for ${platform}.`;
+    
+    // Set aspect ratio based on platform
+    let newAspectRatio: AspectRatio = '16:9'; // Default for Twitter/LinkedIn
+    if (platform === 'Instagram') {
+        newAspectRatio = '1:1';
+    }
+
+    setMode('text-to-image');
+    setAspectRatio(newAspectRatio);
+    setPrompt(newPrompt);
+    setPromptBeforeEnhance(null);
+    setInspirationPrompts([]);
+    setGroundingSources(null);
+    setImageUrls(null);
+    setGeneratedImagesData([]);
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    showToast('Prompt for social media image has been set!', 'success');
   }, []);
 
   const handleGenerateHeaderImage = useCallback(() => {
@@ -737,7 +796,7 @@ const App: React.FC = () => {
   const isAnyLoading = isLoading || isPreviewLoading || isEnhancing || isInspiring || isFetchingFromAirtable;
   const isImageDisplayMode = ['text-to-image', 'ugc-ad', 'product-studio', 'tshirt-mockup', 'avatar-generator', 'creative-chat', 'image-to-prompt'].includes(mode);
   const isVideoDisplayMode = ['text-to-video', 'animate-image'].includes(mode);
-  const isTextDisplayMode = ['blog-post'].includes(mode);
+  const isTextDisplayMode = ['blog-post', 'social-media-post'].includes(mode);
 
   return (
     <div className="bg-gray-900 text-white min-h-screen flex flex-col items-center font-sans">
@@ -849,6 +908,13 @@ const App: React.FC = () => {
                 <BlogPostGenerator onSubmit={handleGenerateBlogPost} isLoading={isLoading} />
               </>
             )}
+            
+            {mode === 'social-media-post' && (
+              <>
+                <h2 className="text-xl font-bold text-indigo-400">Social Media Post Generator</h2>
+                <SocialMediaPostGenerator onSubmit={handleGenerateSocialMediaPost} isLoading={isLoading} />
+              </>
+            )}
 
             {(mode === 'text-to-video' || mode === 'animate-image') && (
               <div className="flex flex-col gap-4">
@@ -913,6 +979,9 @@ const App: React.FC = () => {
             )}
             {isTextDisplayMode && mode === 'blog-post' && (
                 <BlogPostDisplay content={blogPostContent} isLoading={isLoading} onGenerateHeaderClick={handleGenerateHeaderImage} />
+            )}
+            {isTextDisplayMode && mode === 'social-media-post' && (
+                <SocialMediaPostDisplay posts={socialMediaPosts} isLoading={isLoading} onGenerateImageClick={handleGenerateImageForPost} />
             )}
           </div>
         </div>
