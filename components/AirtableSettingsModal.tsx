@@ -107,22 +107,34 @@ const AirtableSettingsModal: React.FC<AirtableSettingsModalProps> = ({ isOpen, o
                 <h3 className="font-semibold text-gray-300 mb-2">Setup Instructions</h3>
                 <ol className="list-decimal list-inside text-gray-400 space-y-2">
                     <li>Create a table in your Airtable base.</li>
-                    <li>Add the following fields (case-sensitive):
-                        <ul className="list-disc list-inside ml-4 mt-1 text-xs font-mono bg-gray-800 p-2 rounded">
-                            <li>Title (Single line text)</li>
-                            <li>Description (Long text)</li>
-                            <li>Prompt (Long text)</li>
-                            <li>Original Prompt (Long text, optional)</li>
-                            <li>Tags (Single line text)</li>
-                            <li>ImageUrl (Long text)</li>
-                        </ul>
+                    <li>
+                        Add fields for the features you want. Field names must be exact.
+                        <div className="text-xs font-mono bg-gray-800 p-2 rounded mt-1 space-y-2">
+                            <div>
+                                <strong className="text-sky-300">For Prompt Library:</strong>
+                                <ul className="list-disc list-inside ml-4">
+                                    <li><code className="bg-gray-700 px-1 rounded">Prompt</code> (Long text) - <strong>Required</strong></li>
+                                    <li><code className="bg-gray-700 px-1 rounded">Title</code> (Single line text)</li>
+                                    <li><code className="bg-gray-700 px-1 rounded">Tags</code> (Single line text, comma-separated)</li>
+                                </ul>
+                            </div>
+                             <div>
+                                <strong className="text-green-300">For Saving Images:</strong>
+                                <ul className="list-disc list-inside ml-4">
+                                    <li><code className="bg-gray-700 px-1 rounded">Title</code> (Single line text)</li>
+                                    <li><code className="bg-gray-700 px-1 rounded">Prompt</code> (Long text)</li>
+                                    <li><code className="bg-gray-700 px-1 rounded">Description</code> (Single line text)</li>
+                                    <li><code className="bg-gray-700 px-1 rounded">Tags</code> (Single line text, comma-separated)</li>
+                                    <li><code className="bg-gray-700 px-1 rounded">Image Data URL</code> (Long text)</li>
+                                    <li><code className="bg-gray-700 px-1 rounded">Original Prompt</code> (Long text)</li>
+                                </ul>
+                                <p className="text-gray-400 text-xs italic mt-1">Note: The image is saved as a text Data URL because the Airtable API cannot process image uploads directly from the browser.</p>
+                            </div>
+                        </div>
                     </li>
-                    <li>Go to your <a href="https://airtable.com/create/tokens" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline">developer hub</a> to create a Personal Access Token with `data.records:write` scope for your base.</li>
+                    <li>Go to your <a href="https://airtable.com/create/tokens" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline">developer hub</a> to create a Personal Access Token with `data.records:read` and `data.records:write` scopes for your base.</li>
                      <li>Find your Base ID at <a href="https://airtable.com/api" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline">airtable.com/api</a>.</li>
                 </ol>
-                <p className="text-xs text-gray-400 mt-2">
-                    The 'Prompt' field stores the final prompt (including enhancements). 'Original Prompt' saves the prompt before you used "Enhance Prompt".
-                </p>
                 <p className="text-xs text-gray-500 mt-3">* Your credentials are stored only in your browser's local storage.</p>
             </div>
         </div>

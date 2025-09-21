@@ -7,8 +7,10 @@ export interface AirtableConfig {
 }
 
 export const testAirtableConnection = async (config: AirtableConfig): Promise<void> => {
-    // We fetch 1 record with no fields to verify credentials and table access.
-    const url = `https://api.airtable.com/v0/${config.baseId}/${encodeURIComponent(config.tableName)}?maxRecords=1&fields%5B%5D=`;
+    // We fetch 1 record to verify credentials and table access.
+    // Removing the `fields[]=` parameter is more robust, as some API versions
+    // may interpret an empty field name as an error.
+    const url = `https://api.airtable.com/v0/${config.baseId}/${encodeURIComponent(config.tableName)}?maxRecords=1`;
     
     const headers = {
         'Authorization': `Bearer ${config.token}`,
@@ -33,7 +35,6 @@ export const testAirtableConnection = async (config: AirtableConfig): Promise<vo
 };
 
 export const saveImageToAirtable = async (config: AirtableConfig, image: SavedImage): Promise<void> => {
-    // Airtable table names are often URL encoded
     const url = `https://api.airtable.com/v0/${config.baseId}/${encodeURIComponent(config.tableName)}`;
     
     const headers = {
@@ -41,16 +42,14 @@ export const saveImageToAirtable = async (config: AirtableConfig, image: SavedIm
         'Content-Type': 'application/json',
     };
 
-    // Construct the record, ensuring field names match the Airtable base
+    // Due to Airtable API limitations (requiring a public URL for attachments),
+    // we save the image as a Data URL in a long text field. This is a reliable client-side approach.
     const fields: { [key: string]: any } = {
         'Title': image.title,
+        'Prompt': image.prompt,
         'Description': image.description,
-        'Prompt': image.prompt, // This will be the final prompt used for generation (including enhanced)
-        // IMPORTANT: Storing the full data URL in a Long Text field
-        // Airtable's attachment field requires a public URL, which isn't feasible client-side
-        'ImageUrl': image.url, 
-        // Convert tags array to a comma-separated string
-        'Tags': image.tags.join(', '), 
+        'Tags': image.tags.join(', '), // Save tags as a comma-separated string
+        'Image Data URL': image.url, // Save the full data URL
     };
     
     if (image.originalPrompt) {
@@ -72,7 +71,6 @@ export const saveImageToAirtable = async (config: AirtableConfig, image: SavedIm
 
         if (!response.ok) {
             const errorData = await response.json();
-            // Provide a more specific error message from Airtable if available
             const errorMessage = errorData.error?.message || `HTTP error! status: ${response.status}`;
             throw new Error(`Airtable API error: ${errorMessage}`);
         }
@@ -80,27 +78,70 @@ export const saveImageToAirtable = async (config: AirtableConfig, image: SavedIm
     } catch (error) {
         console.error("Failed to save to Airtable:", error);
         if (error instanceof Error) {
-            // Re-throw with a more user-friendly prefix
             throw new Error(`Failed to save to Airtable. ${error.message}`);
         }
         throw new Error("An unknown error occurred while saving to Airtable.");
     }
 };
 
+export const updateAirtableRecord = async (config: AirtableConfig, recordId: string, fields: object): Promise<void> => {
+    const url = `https://api.airtable.com/v0/${config.baseId}/${encodeURIComponent(config.tableName)}/${recordId}`;
+    
+    const headers = {
+        'Authorization': `Bearer ${config.token}`,
+        'Content-Type': 'application/json',
+    };
+
+    const body = {
+        fields,
+    };
+
+    try {
+        const response = await fetch(url, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify(body),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            const errorMessage = errorData.error?.message || `HTTP error! status: ${response.status}`;
+            throw new Error(`Airtable API error: ${errorMessage}`);
+        }
+    } catch (error) {
+        console.error("Failed to update Airtable record:", error);
+        if (error instanceof Error) {
+            throw new Error(`Failed to update Airtable. ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while updating the Airtable record.");
+    }
+};
+
 export const getPromptsFromAirtable = async (
     config: AirtableConfig, 
-    options: { searchQuery?: string, offset?: string, pageSize?: number }
+    options: { searchQuery?: string, offset?: string, pageSize?: number, tags?: string[] }
 ): Promise<{ records: any[], offset?: string }> => {
-    const { searchQuery, offset, pageSize = 12 } = options;
+    const { searchQuery, offset, pageSize = 12, tags = [] } = options;
     
-    let url = `https://api.airtable.com/v0/${config.baseId}/${encodeURIComponent(config.tableName)}?pageSize=${pageSize}&fields%5B%5D=Prompt&fields%5B%5D=Title`;
+    // Remove the explicit fields parameter to fetch all fields.
+    // This makes the function robust against missing optional fields like 'Title' or 'Tags'.
+    let url = `https://api.airtable.com/v0/${config.baseId}/${encodeURIComponent(config.tableName)}?pageSize=${pageSize}`;
 
-    // Filter for prompts that are not empty and not marked as "Synced"
-    let formulas = ["NOT({Prompt} = '')", "({Synced} = 0)"];
+    // Base filter: Ensure the 'Prompt' field is not empty.
+    let formulas = ["NOT({Prompt} = '')"];
+    
     if (searchQuery) {
         const cleanedQuery = searchQuery.replace(/"/g, '\\"').toLowerCase();
-        // Airtable's SEARCH is case-insensitive by default
-        formulas.push(`OR(SEARCH("${cleanedQuery}", LOWER({Prompt})), SEARCH("${cleanedQuery}", LOWER({Title})))`);
+        // Only search the 'Prompt' field. Searching optional fields like 'Title'
+        // would cause an "Unknown field name" error if the user's base doesn't have them.
+        formulas.push(`SEARCH("${cleanedQuery}", LOWER({Prompt}))`);
+    }
+
+    if (tags.length > 0) {
+        // This will attempt to filter by a 'Tags' field. If it doesn't exist, the API will return an error,
+        // which is caught below and displayed to the user.
+        const tagFormulas = tags.map(tag => `FIND(LOWER("${tag.replace(/"/g, '\\"')}"), LOWER({Tags}))`);
+        formulas.push(`OR(${tagFormulas.join(',')})`);
     }
 
     url += `&filterByFormula=AND(${formulas.join(',')})`;
@@ -121,8 +162,21 @@ export const getPromptsFromAirtable = async (
         }
 
         const data = await response.json();
+        
+        const finalRecords = (data.records || [])
+            .filter((r: any) => r.fields && r.fields.Prompt) // Ensure records have fields and a Prompt
+            .map((r: any) => ({
+                id: r.id,
+                fields: {
+                    Prompt: r.fields.Prompt,
+                    // Title is optional. If it doesn't exist, r.fields.Title will be undefined.
+                    // The UI component handles this gracefully.
+                    Title: r.fields.Title 
+                }
+            }));
+
         return {
-            records: data.records || [],
+            records: finalRecords || [],
             offset: data.offset,
         };
     } catch (error) {
@@ -131,10 +185,48 @@ export const getPromptsFromAirtable = async (
     }
 };
 
+export const getTagsFromAirtable = async (config: AirtableConfig): Promise<string[]> => {
+    const url = `https://api.airtable.com/v0/${config.baseId}/${encodeURIComponent(config.tableName)}?pageSize=100&fields%5B%5D=Tags`;
+    const headers = { 'Authorization': `Bearer ${config.token}` };
 
-export const getRandomPromptFromAirtable = async (config: AirtableConfig): Promise<string> => {
-    // Construct the URL to only fetch prompts that are not empty and not marked as "Synced"
-    const url = `https://api.airtable.com/v0/${config.baseId}/${encodeURIComponent(config.tableName)}?fields%5B%5D=Prompt&filterByFormula=AND(NOT({Prompt} = ''), ({Synced} = 0))`;
+    try {
+        const response = await fetch(url, { method: 'GET', headers });
+        if (!response.ok) {
+            const errorData = await response.json();
+            const errorMessage = errorData.error?.message || '';
+            // Gracefully handle the 'Tags' field not existing by returning an empty array.
+            if (errorMessage.includes("Unknown field name")) {
+                console.warn("Airtable 'Tags' field not found. Tag filtering will be disabled.");
+                return []; 
+            }
+            throw new Error(`Airtable API error fetching tags: ${errorMessage || `HTTP status ${response.status}`}`);
+        }
+        
+        const data = await response.json();
+        const allTags = new Set<string>();
+        
+        data.records.forEach((record: any) => {
+            const tagsField = record.fields.Tags;
+            if (tagsField && typeof tagsField === 'string') {
+                tagsField.split(',')
+                    .map(tag => tag.trim())
+                    .filter(tag => tag) // remove empty tags resulting from ", ," or trailing commas
+                    .forEach(tag => allTags.add(tag));
+            }
+        });
+        
+        return Array.from(allTags).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+    } catch (error) {
+        console.error("Failed to get tags from Airtable:", error);
+        // On any other failure, also return an empty array to prevent the modal from crashing.
+        return [];
+    }
+};
+
+export const getRandomPromptFromAirtable = async (config: AirtableConfig): Promise<{ id: string, prompt: string }> => {
+    // Remove the explicit fields parameter to fetch all fields for robustness. Filter for non-empty prompts.
+    const url = `https://api.airtable.com/v0/${config.baseId}/${encodeURIComponent(config.tableName)}?filterByFormula=NOT({Prompt} = '')`;
     
     const headers = {
         'Authorization': `Bearer ${config.token}`,
@@ -156,24 +248,25 @@ export const getRandomPromptFromAirtable = async (config: AirtableConfig): Promi
         const records = data.records;
 
         if (!records || records.length === 0) {
-            throw new Error("No unsynced prompts found in your Airtable base. Make sure the 'Prompt' column has entries and the 'Synced' checkbox is unchecked.");
+            throw new Error("No prompts found in your Airtable base. Make sure the 'Prompt' column has entries.");
         }
         
         // Extra client-side filter for robustness
         const validRecords = records.filter((record: any) => record.fields.Prompt && typeof record.fields.Prompt === 'string' && record.fields.Prompt.trim() !== '');
 
         if (validRecords.length === 0) {
-            throw new Error("No valid, unsynced prompts found. All matching entries in the 'Prompt' column are empty.");
+            throw new Error("No valid prompts found. All matching entries in the 'Prompt' column are empty.");
         }
 
         const randomIndex = Math.floor(Math.random() * validRecords.length);
-        const randomPrompt = validRecords[randomIndex].fields.Prompt;
+        const randomRecord = validRecords[randomIndex];
+        const randomPrompt = randomRecord.fields.Prompt;
         
         if (!randomPrompt || typeof randomPrompt !== 'string') {
              throw new Error("A random record was selected, but it doesn't contain a valid 'Prompt' field.");
         }
 
-        return randomPrompt;
+        return { id: randomRecord.id, prompt: randomPrompt };
 
     } catch (error) {
         console.error("Failed to get random prompt from Airtable:", error);

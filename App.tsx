@@ -1,6 +1,8 @@
+
+
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { generateImageFromPrompt, enhancePrompt, editImage, removeBackground, upscaleImage, expandImage, generateImageFromReference, generateUgcProductAd, generateVideoFromPrompt, generateVideoFromImage, generateImageMetadata, getPromptInspiration, generatePromptFromImage, imageAction, removeObject, generateProductScene, generateTshirtMockup, generateBlogPost } from './services/geminiService';
-import { saveImageToAirtable, AirtableConfig, getRandomPromptFromAirtable, getPromptsFromAirtable } from './services/airtableService';
+import { generateImageFromPrompt, enhancePrompt, editImage, removeBackground, upscaleImage, expandImage, generateImageFromReference, generateUgcProductAd, generateVideoFromPrompt, generateVideoFromImage, generateImageMetadata, getPromptInspiration, generatePromptFromImage, imageAction, removeObject, generateProductScene, generateTshirtMockup, generateBlogPost, generateEbookOutline, generateEbookChapterContent, generateBookCover } from './services/geminiService';
+import { saveImageToAirtable, AirtableConfig, getRandomPromptFromAirtable, getPromptsFromAirtable, updateAirtableRecord } from './services/airtableService';
 import Header from './components/Header';
 import PromptInput from './components/PromptInput';
 import ImageDisplay from './components/ImageDisplay';
@@ -15,7 +17,7 @@ import DownloadModal from './components/DownloadModal';
 import EditModal from './components/EditModal';
 import ExpandModal from './components/ExpandModal';
 import ReferenceImageDisplay from './components/ReferenceImageDisplay';
-import { STYLES, ASPECT_RATIOS, VIDEO_STYLES } from './constants';
+import { STYLES, ASPECT_RATIOS, VIDEO_STYLES, GeneratorMode } from './constants';
 import ModeSelector from './components/ModeSelector';
 import UgcAdGenerator from './components/UgcAdGenerator';
 import VideoGenerator from './components/VideoGenerator';
@@ -34,9 +36,12 @@ import AvatarGenerator from './components/AvatarGenerator';
 import AirtableSettingsModal from './components/AirtableSettingsModal';
 import AirtablePromptLibraryModal from './components/AirtablePromptLibraryModal';
 import Toast from './components/Toast';
+import EbookGenerator, { EbookOutline } from './components/EbookGenerator';
+import EbookDisplay, { Ebook } from './components/EbookDisplay';
+import BookCoverGenerator from './components/BookCoverGenerator';
+import EbookManager from './components/EbookManager';
 
 type AspectRatio = typeof ASPECT_RATIOS[number];
-type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup' | 'blog-post' | 'avatar-generator';
 type ToastState = { show: boolean; message: string; type: 'success' | 'error' };
 
 const GroundingSourcesDisplay: React.FC<{ sources: any[] }> = ({ sources }) => (
@@ -88,10 +93,18 @@ const App: React.FC = () => {
   const [chatHistory, setChatHistory] = useState<string[]>([]);
   // Blog Post state
   const [blogPostContent, setBlogPostContent] = useState<string | null>(null);
+  // Ebook state
+  const [ebookContent, setEbookContent] = useState<Ebook | null>(null);
+  const [ebookGenerationProgress, setEbookGenerationProgress] = useState<string>('');
+  const [ebookCoverUrl, setEbookCoverUrl] = useState<string | null>(null);
+  const [isGeneratingCover, setIsGeneratingCover] = useState<boolean>(false);
+  const [uploadedPdfUrl, setUploadedPdfUrl] = useState<string | null>(null);
   // Airtable state
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isPromptLibraryOpen, setIsPromptLibraryOpen] = useState(false);
   const [airtableConfig, setAirtableConfig] = useState<AirtableConfig | null>(null);
+  const [airtableRecord, setAirtableRecord] = useState<{id: string, synced: boolean} | null>(null);
+  const [isSyncingAirtable, setIsSyncingAirtable] = useState<boolean>(false);
   const [savingToAirtableState, setSavingToAirtableState] = useState<{ status: 'idle' | 'saving'; imageId: string | null }>({ status: 'idle', imageId: null });
   const [toast, setToast] = useState<ToastState>({ show: false, message: '', type: 'success' });
   
@@ -157,22 +170,32 @@ const App: React.FC = () => {
   };
   
   const handleSetMode = (newMode: GeneratorMode) => {
-    if (newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'product-studio' || newMode === 'tshirt-mockup' || newMode === 'blog-post' || newMode === 'avatar-generator') {
+    if (newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'product-studio' || newMode === 'tshirt-mockup' || newMode === 'blog-post' || newMode === 'avatar-generator' || newMode === 'ebook-generator' || newMode === 'book-cover-generator' || newMode === 'ebook-manager') {
       setImageUrls(null);
       setGeneratedImagesData([]);
     } else {
       setPreviewVideoUrl(null);
       setFinalVideoUrl(null);
       setBlogPostContent(null);
+      setEbookContent(null);
+      setEbookCoverUrl(null);
+      setUploadedPdfUrl(null);
     }
-    if (newMode === 'avatar-generator') {
-      setAspectRatio('1:1');
+    if (newMode === 'avatar-generator' || newMode === 'book-cover-generator') {
+      setAspectRatio('9:16');
     }
     if (newMode !== 'animate-image') {
       setSourceImageForVideo(null);
     }
     if (mode === 'creative-chat' && newMode !== 'creative-chat') {
       handleResetChat();
+    }
+    if (newMode !== 'ebook-generator') {
+      setEbookContent(null);
+      setEbookCoverUrl(null);
+    }
+    if (newMode !== 'ebook-manager') {
+        setUploadedPdfUrl(null);
     }
     setMode(newMode);
   };
@@ -234,6 +257,7 @@ const App: React.FC = () => {
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
+    setEbookContent(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
 
@@ -262,7 +286,7 @@ const App: React.FC = () => {
     }
   }, [prompt, negativePrompt, referenceImageUrl, imageCount, selectedStyle, aspectRatio, handleSuccessfulGeneration]);
   
-  const handleGenerateAvatar = useCallback(async (avatarPrompt: string) => {
+  const handleGenerateAvatar = useCallback(async (avatarPrompt: string, refImageUrl: string | null) => {
     setIsLoading(true);
     setError(null);
     setImageUrls(null);
@@ -270,12 +294,20 @@ const App: React.FC = () => {
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
+    setEbookContent(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
 
     try {
-      // Avatars are always 1 image at 1:1
-      const generatedImageUrls = await generateImageFromPrompt(avatarPrompt, 1, '1:1', '');
+      let generatedImageUrls: string[];
+      if (refImageUrl) {
+        // Avatars are always 1 image, so no negative prompt is needed as context is primary
+        const resultUrl = await generateImageFromReference(refImageUrl, avatarPrompt, '', 'avatar');
+        generatedImageUrls = [resultUrl];
+      } else {
+        // Avatars are always 1 image at 1:1
+        generatedImageUrls = await generateImageFromPrompt(avatarPrompt, 1, '1:1', '');
+      }
       handleSuccessfulGeneration(generatedImageUrls, avatarPrompt);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
@@ -295,6 +327,7 @@ const App: React.FC = () => {
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
+    setEbookContent(null);
     
     const adPrompt = `UGC ad for ${productName}: ${productDescription}`;
     
@@ -319,6 +352,7 @@ const App: React.FC = () => {
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
+    setEbookContent(null);
 
     const mockupPrompt = `T-shirt mockup with user-provided design.`;
 
@@ -349,6 +383,7 @@ const App: React.FC = () => {
     setImageUrls(null);
     setGeneratedImagesData([]);
     setBlogPostContent(null);
+    setEbookContent(null);
 
     if (isPreview) {
       setPreviewVideoUrl(null);
@@ -383,6 +418,7 @@ const App: React.FC = () => {
     setImageUrls(null);
     setGeneratedImagesData([]);
     setBlogPostContent(null);
+    setEbookContent(null);
 
     if (isPreview) {
         setPreviewVideoUrl(null);
@@ -416,6 +452,7 @@ const App: React.FC = () => {
     setIsEnhancing(true);
     setError(null);
     setGroundingSources(null);
+    setAirtableRecord(null);
 
     try {
       const response = await enhancePrompt(promptToEnhance, useGoogleSearch);
@@ -438,6 +475,7 @@ const App: React.FC = () => {
    const handleGetInspiration = useCallback(async () => {
     setIsInspiring(true);
     setError(null);
+    setAirtableRecord(null);
     try {
         const prompts = await getPromptInspiration();
         setInspirationPrompts(prompts);
@@ -458,12 +496,14 @@ const App: React.FC = () => {
     }
     setIsFetchingFromAirtable(true);
     setError(null);
-    setInspirationPrompts([]); // Clear other prompts
+    setInspirationPrompts([]);
     setGroundingSources(null);
+    setAirtableRecord(null);
     try {
-      const randomPrompt = await getRandomPromptFromAirtable(airtableConfig);
+      const { id, prompt: randomPrompt } = await getRandomPromptFromAirtable(airtableConfig);
       setPrompt(randomPrompt);
-      setPromptBeforeEnhance(null); // Clear any old "original" prompt
+      setAirtableRecord({ id, synced: false });
+      setPromptBeforeEnhance(null);
       showToast('Prompt loaded from Airtable!', 'success');
     } catch (e) {
       const message = e instanceof Error ? e.message : 'An unknown error occurred.';
@@ -474,14 +514,42 @@ const App: React.FC = () => {
     }
   }, [airtableConfig]);
   
-  const handleSelectAirtablePrompt = (selectedPrompt: string) => {
-    setPrompt(selectedPrompt);
+  const handleBrowseAirtableClick = () => {
+    if (!airtableConfig) {
+      showToast('Please configure your Airtable settings first.', 'error');
+      setIsSettingsModalOpen(true);
+    } else {
+      setIsPromptLibraryOpen(true);
+    }
+  };
+
+  const handleSelectAirtablePrompt = (selectedPrompt: { id: string, text: string }) => {
+    setPrompt(selectedPrompt.text);
+    setAirtableRecord({ id: selectedPrompt.id, synced: false });
     setIsPromptLibraryOpen(false);
     setPromptBeforeEnhance(null);
     setInspirationPrompts([]);
     setGroundingSources(null);
     showToast('Prompt selected from your library!', 'success');
   };
+
+  const handleSyncAirtable = useCallback(async () => {
+    if (!airtableRecord || airtableRecord.synced || !airtableConfig) {
+      return;
+    }
+    setIsSyncingAirtable(true);
+    try {
+      await updateAirtableRecord(airtableConfig, airtableRecord.id, { "Synced": true });
+      setAirtableRecord(rec => rec ? { ...rec, synced: true } : null);
+      showToast('Prompt marked as synced in Airtable!', 'success');
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'An unknown error occurred.';
+      showToast(`Failed to sync: ${message}`, 'error');
+      console.error(e);
+    } finally {
+      setIsSyncingAirtable(false);
+    }
+  }, [airtableRecord, airtableConfig]);
 
   const handleImageAction = useCallback(async (action: (...args: any[]) => Promise<string>, ...args: any[]) => {
       setIsLoading(true);
@@ -491,8 +559,10 @@ const App: React.FC = () => {
       setFinalVideoUrl(null);
       setPreviewVideoUrl(null);
       setBlogPostContent(null);
+      setEbookContent(null);
       setEditModalInfo({ isOpen: false, imageUrl: null, mode: 'inpaint' });
       setExpandModalInfo({ isOpen: false, imageUrl: null });
+      setAirtableRecord(null); // Image actions create new content, so clear the prompt context
 
       try {
           const resultImageUrl = await action(...args);
@@ -516,8 +586,10 @@ const App: React.FC = () => {
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
+    setEbookContent(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
+    setAirtableRecord(null);
 
     try {
       const generatedPrompt = await generatePromptFromImage(imageUrl);
@@ -565,6 +637,7 @@ const App: React.FC = () => {
     setIsLoading(true);
     setError(null);
     setBlogPostContent(null);
+    setEbookContent(null);
     // Clear other content types
     setImageUrls(null);
     setGeneratedImagesData([]);
@@ -583,12 +656,49 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const handleSaveChatImage = useCallback(() => {
-    if (chatImage && chatHistory.length > 0) {
-        const fullPromptHistory = chatHistory.join(' -> ');
-        handleSuccessfulGeneration([chatImage], `Chat creation: ${fullPromptHistory}`);
+  const handleGenerateEbook = useCallback(async (outline: EbookOutline, bookIdea: string) => {
+    setIsLoading(true);
+    setError(null);
+    setBlogPostContent(null);
+    setImageUrls(null);
+    setGeneratedImagesData([]);
+    setFinalVideoUrl(null);
+    setPreviewVideoUrl(null);
+    setEbookGenerationProgress('Starting generation...');
+    setEbookCoverUrl(null);
+    
+    const initialEbookState: Ebook = {
+      title: outline.title,
+      author: outline.author,
+      chapters: outline.chapters.map(title => ({ title, content: '' })),
+      originalIdea: bookIdea,
+    };
+    setEbookContent(initialEbookState);
+
+    try {
+      for (let i = 0; i < outline.chapters.length; i++) {
+        // FIX: The `outline.chapters` is an array of strings, so access the element directly.
+        const chapterTitle = outline.chapters[i];
+        setEbookGenerationProgress(`Writing Chapter ${i + 1}: ${chapterTitle}`);
+        
+        const chapterContent = await generateEbookChapterContent(chapterTitle, outline.title, bookIdea);
+        
+        setEbookContent(prev => {
+          if (!prev) return null;
+          const newChapters = [...prev.chapters];
+          newChapters[i].content = chapterContent;
+          return { ...prev, chapters: newChapters };
+        });
+      }
+      setEbookGenerationProgress('Ebook generation complete!');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+      setError(`Failed to generate ebook content: ${message}`);
+      setEbookGenerationProgress('Generation failed.');
+    } finally {
+      setIsLoading(false);
     }
-  }, [chatImage, chatHistory, handleSuccessfulGeneration]);
+  }, []);
 
   const handleSaveToAirtable = useCallback(async (image: SavedImage) => {
     if (!airtableConfig) {
@@ -599,47 +709,58 @@ const App: React.FC = () => {
     setSavingToAirtableState({ status: 'saving', imageId: image.id });
     try {
       await saveImageToAirtable(airtableConfig, image);
-      showToast(`Image "${image.title}" saved to Airtable.`, 'success');
+      showToast('Image saved to Airtable!', 'success');
     } catch (e) {
       const message = e instanceof Error ? e.message : 'An unknown error occurred.';
-      showToast(`Error saving to Airtable: ${message}`, 'error', 5000);
+      showToast(`Failed to save: ${message}`, 'error');
       console.error(e);
     } finally {
       setSavingToAirtableState({ status: 'idle', imageId: null });
     }
   }, [airtableConfig]);
-  
-  const handleSaveAirtableConfig = (config: AirtableConfig) => {
+
+  const handleAirtableConfigSave = (config: AirtableConfig) => {
     setAirtableConfig(config);
     localStorage.setItem(AIRTABLE_CONFIG_KEY, JSON.stringify(config));
     setIsSettingsModalOpen(false);
     showToast('Airtable settings saved!', 'success');
   };
 
-  const handleConfirmEdit = (originalImageUrl: string, maskedImageUrl: string, editPrompt: string) => {
-    if (editModalInfo.mode === 'inpaint') {
-      const finalPrompt = `In the semi-transparent red masked area, ${editPrompt}. Keep the rest of the image exactly as it is, preserving all details, lighting, and style outside the mask.`;
-      handleImageAction(editImage, maskedImageUrl, finalPrompt);
-    } else { // mode is 'remove'
-      handleImageAction(removeObject, maskedImageUrl);
+  const handleDeleteImage = (id: string) => {
+    const updatedImages = savedImages.filter(img => img.id !== id);
+    setSavedImages(updatedImages);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedImages));
+    showToast('Image deleted.', 'success');
+  };
+
+  const handleClearAllImages = () => {
+    if (window.confirm('Are you sure you want to delete all saved creations? This cannot be undone.')) {
+        setSavedImages([]);
+        localStorage.removeItem(STORAGE_KEY);
+        showToast('Gallery cleared.', 'success');
     }
   };
 
-  const handleConfirmExpand = (originalImageUrl: string, expandedCanvasUrl: string, expandPrompt: string) => {
-    let finalPrompt = `Expand the original image to fill the transparent areas.`;
-    if(expandPrompt.trim()) {
-        finalPrompt += ` Use the following prompt as creative guidance for the new areas: "${expandPrompt.trim()}".`;
-    }
-    finalPrompt += ` Ensure the new areas seamlessly blend with the original image in terms of style, lighting, and content.`;
-    handleImageAction(expandImage, expandedCanvasUrl, finalPrompt);
+  const openDownloadModal = (imageUrl: string) => {
+    setModalInfo({ isOpen: true, imageUrl });
   };
 
-  const handleRemoveBackground = (imageUrl: string) => {
-    handleImageAction(removeBackground, imageUrl);
+  const openEditModal = (imageUrl: string) => {
+    setEditModalInfo({ isOpen: true, imageUrl, mode: 'inpaint' });
+  };
+  
+  const openRemoveObjectModal = (imageUrl: string) => {
+    setEditModalInfo({ isOpen: true, imageUrl, mode: 'remove' });
+  };
+  
+  const openExpandModal = (imageUrl: string) => {
+    setExpandModalInfo({ isOpen: true, imageUrl });
   };
 
-  const handleUpscaleImage = (imageUrl: string) => {
-    handleImageAction(upscaleImage, imageUrl);
+  const handleSetReferenceImage = (imageUrl: string) => {
+    setReferenceImageUrl(imageUrl);
+    handleSetMode('text-to-image');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleAnimateImage = (imageUrl: string) => {
@@ -648,461 +769,311 @@ const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSelectPrompt = (selectedPrompt: string) => {
-    setPrompt(selectedPrompt);
-    setInspirationPrompts([]);
-    setGroundingSources(null);
-  };
+  const handleGenerateBookCover = useCallback(async (title: string, author: string, synopsis: string, style: string) => {
+    setIsLoading(true);
+    setError(null);
+    setImageUrls(null);
+    setGeneratedImagesData([]);
 
-  const handleDeleteSavedImage = (idToDelete: string) => {
-    const updatedImages = savedImages.filter(image => image.id !== idToDelete);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedImages));
-      setSavedImages(updatedImages);
-    } catch (storageError) {
-      console.error("Failed to update local storage:", storageError);
-      setError("Could not delete the image from storage.");
+        const resultUrls = await generateBookCover(title, synopsis, style);
+        // We just display the cover images, not save them to the main gallery automatically
+        setImageUrls(resultUrls);
+        setGeneratedImagesData([]); 
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+      setError(`Failed to generate book cover: ${message}`);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, []);
 
-  const handleClearAllSavedImages = () => {
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-      setSavedImages([]);
-    } catch (storageError) {
-      console.error("Failed to clear local storage:", storageError);
-      setError("Could not clear all saved images from storage.");
-    }
-  };
-  
-  const handleOpenDownloadModal = (imageUrl: string) => {
-    setModalInfo({ isOpen: true, imageUrl });
-  };
-
-  const handleCloseDownloadModal = () => {
-    setModalInfo({ isOpen: false, imageUrl: null });
-  };
-
-  const handleOpenEditModal = (imageUrl: string) => {
-    setEditModalInfo({ isOpen: true, imageUrl, mode: 'inpaint' });
-  };
-
-  const handleOpenRemoveModal = (imageUrl: string) => {
-    setEditModalInfo({ isOpen: true, imageUrl, mode: 'remove' });
-  };
-
-  const handleCloseEditModal = () => {
-    setEditModalInfo({ isOpen: false, imageUrl: null, mode: 'inpaint' });
-  };
-  
-  const handleOpenExpandModal = (imageUrl: string) => {
-    setExpandModalInfo({ isOpen: true, imageUrl });
-  };
-
-  const handleCloseExpandModal = () => {
-    setExpandModalInfo({ isOpen: false, imageUrl: null });
-  };
-
-  const handleSetReferenceImage = (imageUrl: string) => {
-    setReferenceImageUrl(imageUrl);
-    setMode('text-to-image'); // Switch to T2I mode when a reference is set
-  };
-
-  const handleClearReferenceImage = () => {
-    setReferenceImageUrl(null);
-  };
-  
-  const isDisplayingContent = !!imageUrls || !!previewVideoUrl || !!finalVideoUrl || !!chatImage || !!blogPostContent;
-  const isVideoMode = mode === 'text-to-video' || mode === 'animate-image';
-  const isAnyVideoLoading = isLoading || isPreviewLoading;
+  const isAnyLoading = isLoading || isPreviewLoading || isEnhancing || isInspiring || isFetchingFromAirtable;
+  const isImageDisplayMode = ['text-to-image', 'ugc-ad', 'product-studio', 'tshirt-mockup', 'avatar-generator', 'book-cover-generator', 'creative-chat', 'image-to-prompt'].includes(mode);
+  const isVideoDisplayMode = ['text-to-video', 'animate-image'].includes(mode);
+  const isTextDisplayMode = ['blog-post', 'ebook-generator', 'ebook-manager'].includes(mode);
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white font-sans flex flex-col">
-      <div 
-        className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-gray-900 via-gray-800 to-black"
-        style={{
-          backgroundSize: '200% 200%',
-          animation: 'gradient 15s ease infinite',
-        }}
-      ></div>
-      <style>{`
-        @keyframes gradient {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-        @keyframes pulse-slow {
-          50% { opacity: 0.8; transform: scale(0.98); }
-        }
-        /* Custom Range Slider */
-        input[type="range"] {
-          -webkit-appearance: none;
-          appearance: none;
-          background: transparent;
-          cursor: pointer;
-        }
-        input[type="range"]:disabled {
-          cursor: not-allowed;
-        }
-        /* Webkit Track */
-        input[type="range"]::-webkit-slider-runnable-track {
-          background: #374151; /* gray-700 */
-          height: 0.5rem;
-          border-radius: 0.5rem;
-        }
-        /* Webkit Thumb */
-        input[type="range"]::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          margin-top: -6px; /* Center thumb */
-          background-color: #6366f1; /* indigo-500 */
-          height: 20px;
-          width: 20px;
-          border-radius: 9999px;
-          border: 2px solid white;
-          transition: background-color 150ms ease-in-out;
-        }
-        input[type="range"]:hover:not(:disabled)::-webkit-slider-thumb {
-          background-color: #818cf8; /* indigo-400 */
-        }
-        input[type="range"]:disabled::-webkit-slider-thumb {
-          background-color: #4f46e5; /* indigo-600 */
-          opacity: 0.7;
-        }
-        /* Firefox Track */
-        input[type="range"]::-moz-range-track {
-          background: #374151; /* gray-700 */
-          height: 0.5rem;
-          border-radius: 0.5rem;
-        }
-        /* Firefox Thumb */
-        input[type="range"]::-moz-range-thumb {
-          background-color: #6366f1; /* indigo-500 */
-          height: 20px;
-          width: 20px;
-          border-radius: 9999px;
-          border: 2px solid white;
-          transition: background-color 150ms ease-in-out;
-        }
-        input[type="range"]:hover:not(:disabled)::-moz-range-thumb {
-          background-color: #818cf8; /* indigo-400 */
-        }
-        input[type="range"]:disabled::-moz-range-thumb {
-          background-color: #4f46e5; /* indigo-600 */
-          opacity: 0.7;
-        }
-        .animate-pulse-slow {
-          animation: pulse-slow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-      `}</style>
-      
+    <div className="bg-gray-900 text-white min-h-screen flex flex-col items-center font-sans">
       <Header onSettingsClick={() => setIsSettingsModalOpen(true)} />
-      
-      <main className="flex-grow flex flex-col items-center justify-center p-4 z-10">
-        <div className="w-full max-w-4xl flex flex-col lg:flex-row gap-8">
-          <div className="lg:w-1/2 flex flex-col gap-6">
-            
-            <ModeSelector mode={mode} setMode={handleSetMode} />
-
+      <main className="w-full max-w-7xl p-4 flex-grow flex flex-col gap-8">
+        <div className="w-full max-w-4xl mx-auto">
+          <ModeSelector mode={mode} setMode={handleSetMode} />
+        </div>
+        
+        <div className="w-full max-w-5xl mx-auto">
+          {error && <ErrorMessage message={error} />}
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full max-w-7xl mx-auto">
+          {/* --- LEFT COLUMN (CONTROLS) --- */}
+          <div className="flex flex-col gap-6 p-4 sm:p-6 bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl">
             {mode === 'text-to-image' && (
               <>
-                <h2 className="text-2xl font-bold text-center lg:text-left text-indigo-400">Describe the image you want to create</h2>
-                {referenceImageUrl && (
-                  <ReferenceImageDisplay 
-                    imageUrl={referenceImageUrl}
-                    onClear={handleClearReferenceImage}
-                  />
-                )}
-                <PromptInput
-                  prompt={prompt}
-                  setPrompt={setPrompt}
-                  setPromptBeforeEnhance={setPromptBeforeEnhance}
-                  negativePrompt={negativePrompt}
-                  setNegativePrompt={setNegativePrompt}
-                  onSubmit={handleGenerateImage}
-                  onEnhance={handleEnhancePrompt}
-                  onInspire={handleGetInspiration}
-                  onGetRandomFromAirtable={handleGetRandomPromptFromAirtable}
-                  onBrowseAirtable={() => setIsPromptLibraryOpen(true)}
-                  isLoading={isLoading}
-                  isEnhancing={isEnhancing}
-                  isInspiring={isInspiring}
-                  isFetchingFromAirtable={isFetchingFromAirtable}
-                  airtableConfigured={!!airtableConfig}
-                  useGoogleSearch={useGoogleSearch}
-                  setUseGoogleSearch={setUseGoogleSearch}
-                  inspirationPrompts={inspirationPrompts}
+                <h2 className="text-xl font-bold text-indigo-400">Image Generation Controls</h2>
+                {referenceImageUrl && <ReferenceImageDisplay imageUrl={referenceImageUrl} onClear={() => setReferenceImageUrl(null)} />}
+                <PromptInput 
+                    prompt={prompt} 
+                    setPrompt={setPrompt}
+                    setPromptBeforeEnhance={setPromptBeforeEnhance}
+                    negativePrompt={negativePrompt}
+                    setNegativePrompt={setNegativePrompt}
+                    onSubmit={handleGenerateImage} 
+                    onEnhance={handleEnhancePrompt} 
+                    onInspire={handleGetInspiration}
+                    onGetRandomFromAirtable={handleGetRandomPromptFromAirtable}
+                    onBrowseAirtable={handleBrowseAirtableClick}
+                    isLoading={isLoading} 
+                    isEnhancing={isEnhancing} 
+                    isInspiring={isInspiring}
+                    isFetchingFromAirtable={isFetchingFromAirtable}
+                    airtableConfigured={!!airtableConfig}
+                    useGoogleSearch={useGoogleSearch}
+                    setUseGoogleSearch={setUseGoogleSearch}
+                    inspirationPrompts={inspirationPrompts}
                 />
                 {groundingSources && <GroundingSourcesDisplay sources={groundingSources} />}
-                <ImageCountSelector
-                  count={imageCount}
-                  setCount={setImageCount}
-                  isLoading={isLoading || isEnhancing || !!referenceImageUrl}
-                  isReferenceActive={!!referenceImageUrl}
-                />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <StyleSelector
-                    selectedStyle={selectedStyle}
-                    setSelectedStyle={setSelectedStyle}
-                    isLoading={isLoading || isEnhancing}
-                  />
-                  <AspectRatioSelector
-                    selectedAspectRatio={aspectRatio}
-                    setAspectRatio={setAspectRatio}
-                    isLoading={isLoading || isEnhancing || !!referenceImageUrl}
-                    isReferenceActive={!!referenceImageUrl}
-                  />
+                <div className="flex flex-col gap-4">
+                  <ImageCountSelector count={imageCount} setCount={setImageCount} isLoading={isLoading} isReferenceActive={!!referenceImageUrl} />
+                  <StyleSelector selectedStyle={selectedStyle} setSelectedStyle={setSelectedStyle} isLoading={isLoading} />
+                  <AspectRatioSelector selectedAspectRatio={aspectRatio} setAspectRatio={setAspectRatio} isLoading={isLoading} isReferenceActive={!!referenceImageUrl} />
                 </div>
-                <ExamplePrompts onSelectPrompt={handleSelectPrompt} isLoading={isLoading || isEnhancing} />
+                <ExamplePrompts onSelectPrompt={(p) => { setPrompt(p); setPromptBeforeEnhance(null); }} isLoading={isLoading} />
               </>
             )}
 
             {mode === 'avatar-generator' && (
               <>
-                <h2 className="text-2xl font-bold text-center lg:text-left text-indigo-400">Avatar Generator</h2>
-                <AvatarGenerator
-                  onSubmit={handleGenerateAvatar}
-                  isLoading={isLoading}
-                />
+                <h2 className="text-xl font-bold text-indigo-400">Avatar Generator</h2>
+                <AvatarGenerator onSubmit={handleGenerateAvatar} isLoading={isLoading} />
               </>
             )}
-            
+
             {mode === 'creative-chat' && (
+                <>
+                    <h2 className="text-xl font-bold text-indigo-400">Creative Chat</h2>
+                    <CreativeChat 
+                      onSubmit={handleCreativeChatSubmit}
+                      onSave={() => chatImage && handleSuccessfulGeneration([chatImage], chatHistory.join('; '))}
+                      onReset={handleResetChat}
+                      chatHistory={chatHistory}
+                      currentImage={chatImage}
+                      isLoading={isLoading}
+                    />
+                </>
+            )}
+
+            {mode === 'image-to-prompt' && (
+                <>
+                    <h2 className="text-xl font-bold text-indigo-400">Image-to-Prompt</h2>
+                    <ImageToPromptGenerator onSubmit={handleGeneratePromptFromImage} isLoading={isLoading} />
+                </>
+            )}
+
+            {mode === 'ugc-ad' && (
               <>
-                <h2 className="text-2xl font-bold text-center lg:text-left text-indigo-400">Creative Chat</h2>
-                <CreativeChat
-                  onSubmit={handleCreativeChatSubmit}
-                  onSave={handleSaveChatImage}
-                  onReset={handleResetChat}
-                  chatHistory={chatHistory}
-                  currentImage={chatImage}
-                  isLoading={isLoading}
-                />
+                <h2 className="text-xl font-bold text-indigo-400">UGC Ad Generator</h2>
+                <UgcAdGenerator onSubmit={handleGenerateUgcAd} isLoading={isLoading} />
               </>
             )}
 
-            {mode === 'blog-post' && (
+             {mode === 'product-studio' && (
               <>
-                <h2 className="text-2xl font-bold text-center lg:text-left text-indigo-400">Blog Post Generator</h2>
-                <BlogPostGenerator
-                  onSubmit={handleGenerateBlogPost}
-                  isLoading={isLoading}
+                <h2 className="text-xl font-bold text-indigo-400">Product Studio</h2>
+                <ProductStudio
+                  removeBackground={(img) => imageAction(img, "remove the background, make it transparent")}
+                  generateProductScene={generateProductScene}
+                  onGenerationComplete={handleSuccessfulGeneration}
+                  setIsLoading={setIsLoading}
+                  setError={setError}
                 />
-              </>
-            )}
-
-            {mode === 'product-studio' && (
-              <>
-                 <h2 className="text-2xl font-bold text-center lg:text-left text-indigo-400">AI Product Studio</h2>
-                 <ProductStudio 
-                    removeBackground={removeBackground}
-                    generateProductScene={generateProductScene}
-                    onGenerationComplete={handleSuccessfulGeneration}
-                    setIsLoading={setIsLoading}
-                    setError={setError}
-                 />
               </>
             )}
 
             {mode === 'tshirt-mockup' && (
               <>
-                 <h2 className="text-2xl font-bold text-center lg:text-left text-indigo-400">T-shirt Mockup Studio</h2>
-                 <TshirtMockupGenerator 
-                    onSubmit={handleGenerateTshirtMockup}
-                    isLoading={isLoading}
-                 />
+                <h2 className="text-xl font-bold text-indigo-400">T-shirt Mockup Generator</h2>
+                <TshirtMockupGenerator onSubmit={handleGenerateTshirtMockup} isLoading={isLoading} />
+              </>
+            )}
+            
+            {mode === 'blog-post' && (
+              <>
+                <h2 className="text-xl font-bold text-indigo-400">Blog Post Generator</h2>
+                <BlogPostGenerator onSubmit={handleGenerateBlogPost} isLoading={isLoading} />
               </>
             )}
 
-            {mode === 'ugc-ad' && (
+            {mode === 'ebook-generator' && (
               <>
-                 <h2 className="text-2xl font-bold text-center lg:text-left text-indigo-400">Create a UGC Product Ad</h2>
-                 <UgcAdGenerator 
-                    onSubmit={handleGenerateUgcAd}
-                    isLoading={isLoading}
-                 />
+                <h2 className="text-xl font-bold text-indigo-400">Ebook Generator</h2>
+                <EbookGenerator
+                  onGenerateEbook={handleGenerateEbook}
+                  isLoading={isLoading}
+                  setError={setError}
+                />
               </>
             )}
 
-            {mode === 'text-to-video' && (
+            {mode === 'book-cover-generator' && (
               <>
-                 <h2 className="text-2xl font-bold text-center lg:text-left text-indigo-400">Describe the video you want to create</h2>
-                 <VideoGenerator 
+                <h2 className="text-xl font-bold text-indigo-400">Book Cover Generator</h2>
+                <BookCoverGenerator onSubmit={handleGenerateBookCover} isLoading={isLoading} />
+              </>
+            )}
+            
+            {mode === 'ebook-manager' && (
+                <>
+                    <h2 className="text-xl font-bold text-indigo-400">Upload Your Ebook</h2>
+                    <EbookManager onPdfUpload={setUploadedPdfUrl} uploadedPdfUrl={uploadedPdfUrl} />
+                </>
+            )}
+
+            {(mode === 'text-to-video' || mode === 'animate-image') && (
+              <div className="flex flex-col gap-4">
+                <h2 className="text-xl font-bold text-indigo-400">{mode === 'text-to-video' ? 'Text-to-Video Generator' : 'Animate Image'}</h2>
+                {mode === 'text-to-video' ? (
+                  <VideoGenerator 
                     prompt={videoPrompt}
                     setPrompt={setVideoPrompt}
-                    onSubmit={handleGenerateVideo}
+                    onSubmit={(isPreview) => handleGenerateVideo(isPreview)}
                     onEnhance={() => handleEnhance(videoPrompt, setVideoPrompt)}
                     isEnhancing={isEnhancing}
                     isLoading={isLoading}
                     isPreviewLoading={isPreviewLoading}
                     hasPreview={!!previewVideoUrl}
-                 />
-                 {groundingSources && <GroundingSourcesDisplay sources={groundingSources} />}
-                 <VideoStyleSelector
-                    selectedStyle={videoStyle}
-                    setSelectedStyle={setVideoStyle}
-                    isLoading={isAnyVideoLoading || isEnhancing}
-                 />
-                 <VideoDurationSelector 
-                    duration={videoDuration}
-                    setDuration={setVideoDuration}
-                    isLoading={isAnyVideoLoading || isEnhancing}
-                 />
-              </>
-            )}
-            
-            {mode === 'animate-image' && (
-              <>
-                 <h2 className="text-2xl font-bold text-center lg:text-left text-indigo-400">Animate Your Image</h2>
-                 <ImageToVideoGenerator 
-                    onSubmit={handleGenerateVideoFromImage}
+                  />
+                ) : (
+                  <ImageToVideoGenerator
+                    onSubmit={(img, p, isPreview) => handleGenerateVideoFromImage(img, p, isPreview)}
                     isLoading={isLoading}
                     isPreviewLoading={isPreviewLoading}
                     hasPreview={!!previewVideoUrl}
                     initialImageUrl={sourceImageForVideo}
-                 />
-                 <VideoStyleSelector
-                    selectedStyle={videoStyle}
-                    setSelectedStyle={setVideoStyle}
-                    isLoading={isAnyVideoLoading}
-                 />
-                 <VideoDurationSelector 
-                    duration={videoDuration}
-                    setDuration={setVideoDuration}
-                    isLoading={isAnyVideoLoading}
-                 />
-              </>
+                  />
+                )}
+                {groundingSources && <GroundingSourcesDisplay sources={groundingSources} />}
+                <VideoDurationSelector duration={videoDuration} setDuration={setVideoDuration} isLoading={isAnyLoading} />
+                <VideoStyleSelector selectedStyle={videoStyle} setSelectedStyle={setVideoStyle} isLoading={isAnyLoading} />
+              </div>
             )}
-            
-            {mode === 'image-to-prompt' && (
-              <>
-                 <h2 className="text-2xl font-bold text-center lg:text-left text-indigo-400">Generate a Prompt from an Image</h2>
-                 <ImageToPromptGenerator 
-                    onSubmit={handleGeneratePromptFromImage}
-                    isLoading={isLoading}
-                 />
-              </>
-            )}
-
-            {error && <ErrorMessage message={error} />}
           </div>
-          <div className="lg:w-1/2">
-            {isVideoMode ? (
+          
+          {/* --- RIGHT COLUMN (DISPLAY) --- */}
+          <div className="flex items-start justify-center">
+            {isImageDisplayMode && (
+              <ImageDisplay
+                imagesData={generatedImagesData}
+                isLoading={isLoading}
+                aspectRatio={aspectRatio}
+                onDownloadClick={openDownloadModal}
+                onEditClick={openEditModal}
+                onRemoveObjectClick={openRemoveObjectModal}
+                onExpandClick={openExpandModal}
+                onRemoveBackground={(img) => handleImageAction(removeBackground, img)}
+                onUpscale={(img) => handleImageAction(upscaleImage, img)}
+                onAnimateClick={handleAnimateImage}
+                onSaveToAirtable={handleSaveToAirtable}
+                airtableConfigured={!!airtableConfig}
+                savingToAirtableState={savingToAirtableState}
+                airtableRecord={airtableRecord}
+                onSyncAirtable={handleSyncAirtable}
+                isSyncingAirtable={isSyncingAirtable}
+              />
+            )}
+            {isVideoDisplayMode && (
               <VideoDisplay
                 previewVideoUrl={previewVideoUrl}
                 finalVideoUrl={finalVideoUrl}
                 isLoading={isLoading}
                 isPreviewLoading={isPreviewLoading}
               />
-            ) : mode === 'creative-chat' ? (
-              <ImageDisplay
-                imagesData={chatImage ? [{id: 'chat', url: chatImage, title:'', description:'', prompt:'', tags:[]}] : []}
+            )}
+            {isTextDisplayMode && mode === 'blog-post' && (
+                <BlogPostDisplay content={blogPostContent} isLoading={isLoading} />
+            )}
+            {isTextDisplayMode && (mode === 'ebook-generator' || mode === 'ebook-manager') && (
+              <EbookDisplay
+                ebook={ebookContent}
                 isLoading={isLoading}
-                aspectRatio="1:1"
-                hideActions={true}
-              />
-            ) : mode === 'blog-post' ? (
-                <BlogPostDisplay
-                    content={blogPostContent}
-                    isLoading={isLoading}
-                />
-            ) : (
-              <ImageDisplay 
-                imagesData={generatedImagesData}
-                isLoading={isLoading} 
-                aspectRatio={aspectRatio}
-                onDownloadClick={handleOpenDownloadModal}
-                onEditClick={handleOpenEditModal}
-                onRemoveObjectClick={handleOpenRemoveModal}
-                onExpandClick={handleOpenExpandModal}
-                onRemoveBackground={handleRemoveBackground}
-                onUpscale={handleUpscaleImage}
-                onAnimateClick={handleAnimateImage}
-                onSaveToAirtable={handleSaveToAirtable}
-                airtableConfigured={!!airtableConfig}
-                savingToAirtableState={savingToAirtableState}
+                progressMessage={ebookGenerationProgress}
+                coverUrl={ebookCoverUrl}
+                isGeneratingCover={isGeneratingCover}
+                onGenerateCover={async () => {
+                  if (!ebookContent) return;
+                  setIsGeneratingCover(true);
+                  try {
+                    const [cover] = await generateBookCover(ebookContent.title, ebookContent.originalIdea, 'Fantasy Painting');
+                    setEbookCoverUrl(cover);
+                  } catch (e) {
+                     setError("Failed to generate cover.");
+                  } finally {
+                    setIsGeneratingCover(false);
+                  }
+                }}
+                uploadedPdfUrl={uploadedPdfUrl}
               />
             )}
           </div>
         </div>
-      </main>
 
-      {mode !== 'text-to-video' && mode !== 'animate-image' && mode !== 'image-to-prompt' && mode !== 'creative-chat' && mode !== 'blog-post' && (
-        <section className="w-full max-w-7xl mx-auto p-4 z-10">
-          <SavedGallery
+        <SavedGallery 
             images={savedImages}
-            onDeleteImage={handleDeleteSavedImage}
-            onClearAll={handleClearAllSavedImages}
-            onDownloadClick={handleOpenDownloadModal}
-            onEditClick={handleOpenEditModal}
-            onRemoveObjectClick={handleOpenRemoveModal}
-            onExpandClick={handleOpenExpandModal}
-            onRemoveBackground={handleRemoveBackground}
-            onUpscale={handleUpscaleImage}
+            onDeleteImage={handleDeleteImage}
+            onClearAll={handleClearAllImages}
+            onDownloadClick={openDownloadModal}
+            onEditClick={openEditModal}
+            onRemoveObjectClick={openRemoveObjectModal}
+            onExpandClick={openExpandModal}
+            onRemoveBackground={(img) => handleImageAction(removeBackground, img)}
+            onUpscale={(img) => handleImageAction(upscaleImage, img)}
             onSetReference={handleSetReferenceImage}
             onSaveToAirtable={handleSaveToAirtable}
             airtableConfigured={!!airtableConfig}
             savingToAirtableState={savingToAirtableState}
             showSaveConfirmation={showSaveConfirmation}
             isGeneratingMetadata={isGeneratingMetadata}
-          />
-        </section>
-      )}
-      
-      <Footer />
-      
-      <AirtableSettingsModal
-        isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
-        onSave={handleSaveAirtableConfig}
-        currentConfig={airtableConfig}
-      />
-      
-      {airtableConfig && (
-        <AirtablePromptLibraryModal
-            isOpen={isPromptLibraryOpen}
-            onClose={() => setIsPromptLibraryOpen(false)}
-            onSelectPrompt={handleSelectAirtablePrompt}
-            config={airtableConfig}
-            getPrompts={getPromptsFromAirtable}
         />
-      )}
-
-      <DownloadModal
-        isOpen={modalInfo.isOpen}
-        imageUrl={modalInfo.imageUrl}
-        onClose={handleCloseDownloadModal}
-      />
-
-      <EditModal
+      </main>
+      <Footer />
+      <DownloadModal isOpen={modalInfo.isOpen} imageUrl={modalInfo.imageUrl} onClose={() => setModalInfo({ isOpen: false, imageUrl: null })} />
+      <EditModal 
         isOpen={editModalInfo.isOpen}
         imageUrl={editModalInfo.imageUrl}
-        onClose={handleCloseEditModal}
-        onConfirmEdit={handleConfirmEdit}
-        isLoading={isLoading}
         mode={editModalInfo.mode}
+        onClose={() => setEditModalInfo({ isOpen: false, imageUrl: null, mode: 'inpaint' })}
+        onConfirmEdit={(_orig, masked, p) => {
+            if (editModalInfo.mode === 'inpaint') {
+                handleImageAction(editImage, masked, p);
+            } else {
+// FIX: The error on this line was likely due to a type mismatch in a different component (ProductStudio) that was misreported by the compiler. No change is needed here, the fix is applied to the ProductStudio component's props.
+                handleImageAction(removeObject, masked);
+            }
+        }}
+        isLoading={isLoading}
       />
-      
       <ExpandModal
         isOpen={expandModalInfo.isOpen}
         imageUrl={expandModalInfo.imageUrl}
-        onClose={handleCloseExpandModal}
-        onConfirmExpand={handleConfirmExpand}
+        onClose={() => setExpandModalInfo({ isOpen: false, imageUrl: null })}
+        onConfirmExpand={(_orig, expanded, p) => handleImageAction(expandImage, expanded, p)}
         isLoading={isLoading}
       />
-
-      <AIAvatar
-        mode={mode}
-        error={error}
-        isLoading={isLoading || isFetchingFromAirtable}
-        isPreviewLoading={isPreviewLoading}
+      <AirtableSettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        onSave={handleAirtableConfigSave}
+        currentConfig={airtableConfig}
       />
-      
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        show={toast.show}
+      <AirtablePromptLibraryModal
+        isOpen={isPromptLibraryOpen}
+        onClose={() => setIsPromptLibraryOpen(false)}
+        onSelectPrompt={handleSelectAirtablePrompt}
+        config={airtableConfig!} // It's only opened when config exists
+        getPrompts={getPromptsFromAirtable}
       />
+      <Toast message={toast.message} type={toast.type} show={toast.show} />
+      <AIAvatar mode={mode} error={error} isLoading={isLoading} isPreviewLoading={isPreviewLoading} />
     </div>
   );
 };

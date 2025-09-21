@@ -1,6 +1,7 @@
-import React from 'react';
 
-type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup' | 'blog-post' | 'avatar-generator';
+
+import React from 'react';
+import { GeneratorMode } from '../constants';
 
 interface ModeSelectorProps {
   mode: GeneratorMode;
@@ -31,10 +32,10 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ mode, setMode }) => {
     <div className="flex flex-col gap-4 w-full">
       {/* Category: Google Image Generator */}
       <div>
-        <h3 className="text-sm font-semibold text-gray-500 mb-2 px-1">Google Image Generator</h3>
+        <h3 className="text-sm font-semibold text-gray-500 mb-2 px-1">Image Generation</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 w-full bg-gray-800 rounded-lg p-1 border border-gray-700">
             <ModeButton currentMode={mode} targetMode="text-to-image" setMode={setMode}>Text-to-Image</ModeButton>
-            <ModeButton currentMode={mode} targetMode="avatar-generator" setMode={setMode}>Avatar Generator</ModeButton>
+            <ModeButton currentMode={mode} targetMode="avatar-generator" setMode={setMode}>Avatar</ModeButton>
             <ModeButton currentMode={mode} targetMode="creative-chat" setMode={setMode}>Creative Chat</ModeButton>
             <ModeButton currentMode={mode} targetMode="image-to-prompt" setMode={setMode}>Image-to-Prompt</ModeButton>
         </div>
@@ -51,6 +52,16 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ mode, setMode }) => {
         </div>
       </div>
       
+      {/* Category: Ebook Tools */}
+      <div>
+        <h3 className="text-sm font-semibold text-gray-500 mb-2 px-1">Ebook Tools</h3>
+        <div className="grid grid-cols-3 gap-1 w-full bg-gray-800 rounded-lg p-1 border border-gray-700">
+            <ModeButton currentMode={mode} targetMode="ebook-generator" setMode={setMode}>Generator</ModeButton>
+            <ModeButton currentMode={mode} targetMode="book-cover-generator" setMode={setMode}>Cover Art</ModeButton>
+            <ModeButton currentMode={mode} targetMode="ebook-manager" setMode={setMode}>Upload PDF</ModeButton>
+        </div>
+      </div>
+
       {/* Category: Video Tools */}
       <div>
         <h3 className="text-sm font-semibold text-gray-500 mb-2 px-1">Video Tools</h3>

@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { AVATAR_GENDERS, AVATAR_AGES, AVATAR_HAIR_STYLES, AVATAR_COLORS, AVATAR_ART_STYLES } from '../constants';
 
 interface AvatarGeneratorProps {
-  onSubmit: (prompt: string) => void;
+  onSubmit: (prompt: string, referenceImageUrl: string | null) => void;
   isLoading: boolean;
 }
 
 const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({ onSubmit, isLoading }) => {
+  const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
   const [gender, setGender] = useState(AVATAR_GENDERS[0]);
   const [age, setAge] = useState(AVATAR_AGES[2]);
   const [hairStyle, setHairStyle] = useState(AVATAR_HAIR_STYLES[0]);
@@ -15,6 +18,38 @@ const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({ onSubmit, isLoading }
   const [artStyle, setArtStyle] = useState(AVATAR_ART_STYLES[0].value);
   const [accessories, setAccessories] = useState('');
   const [background, setBackground] = useState('simple grey background');
+
+  const handleFileChange = (files: FileList | null) => {
+    if (files && files[0]) {
+      const file = files[0];
+      if (!file.type.startsWith('image/')) {
+        setError('Please upload a valid image file (PNG, JPG, etc.).');
+        return;
+      }
+      setError(null);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReferenceImageUrl(reader.result as string);
+      };
+      reader.onerror = () => {
+        setError("Failed to read the image file.");
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  const handleDragOver = useCallback((event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+  }, []);
+
+  const handleDrop = useCallback((event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    handleFileChange(event.dataTransfer.files);
+  }, []);
+  
+  const handleClearImage = () => {
+    setReferenceImageUrl(null);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +71,7 @@ const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({ onSubmit, isLoading }
     }
 
     const prompt = parts.join(', ');
-    onSubmit(prompt);
+    onSubmit(prompt, referenceImageUrl);
   };
   
   const commonSelectClasses = "w-full p-3 bg-gray-800 border-2 border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300 disabled:opacity-50";
@@ -44,6 +79,53 @@ const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({ onSubmit, isLoading }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <label className="block text-sm font-semibold text-gray-400">Reference Image (Optional)</label>
+        <p className="text-xs text-gray-500 mb-1">Upload a photo to guide the AI on facial features and likeness.</p>
+        
+        {referenceImageUrl ? (
+            <div className="bg-gray-800/50 border border-green-500/50 rounded-lg p-3 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <img src={referenceImageUrl} alt="Reference Preview" className="w-12 h-12 object-cover rounded-md"/>
+                    <div>
+                        <h4 className="font-semibold text-green-400">Reference Image Added</h4>
+                        <p className="text-xs text-gray-400">Ready to guide the generation.</p>
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    onClick={handleClearImage}
+                    className="bg-gray-700 text-gray-300 p-2 rounded-full hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-red-500"
+                    aria-label="Clear reference image"
+                    title="Clear Reference"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                </button>
+            </div>
+        ) : (
+            <label
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                htmlFor="avatar-reference-upload" 
+                className="w-full p-3 bg-gray-800 border-2 border-dashed border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300 flex items-center justify-center cursor-pointer hover:bg-gray-700/50"
+            >
+                <div className="text-center text-gray-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                    <p className="mt-2 text-sm font-semibold">Click to upload or drag & drop</p>
+                </div>
+            </label>
+        )}
+        <input
+            id="avatar-reference-upload"
+            type="file"
+            accept="image/*"
+            onChange={(e) => handleFileChange(e.target.files)}
+            className="hidden"
+            disabled={isLoading}
+        />
+        {error && <p className="text-red-400 text-sm mt-1">{error}</p>}
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label htmlFor="avatar-gender" className="block text-sm font-semibold text-gray-400 mb-1">Gender</label>
