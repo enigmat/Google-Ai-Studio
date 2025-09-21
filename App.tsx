@@ -1,7 +1,7 @@
 
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { generateImageFromPrompt, enhancePrompt, editImage, removeBackground, upscaleImage, expandImage, generateImageFromReference, generateUgcProductAd, generateVideoFromPrompt, generateVideoFromImage, generateImageMetadata, getPromptInspiration, generatePromptFromImage, imageAction, removeObject, generateProductScene, generateTshirtMockup, generateBlogPost, generateEbookOutline, generateEbookChapterContent, generateBookCover } from './services/geminiService';
+import { generateImageFromPrompt, enhancePrompt, editImage, removeBackground, upscaleImage, expandImage, generateImageFromReference, generateUgcProductAd, generateVideoFromPrompt, generateVideoFromImage, generateImageMetadata, getPromptInspiration, generatePromptFromImage, imageAction, removeObject, generateProductScene, generateTshirtMockup, generateBlogPost } from './services/geminiService';
 import { saveImageToAirtable, AirtableConfig, getRandomPromptFromAirtable, getPromptsFromAirtable, updateAirtableRecord } from './services/airtableService';
 import Header from './components/Header';
 import PromptInput from './components/PromptInput';
@@ -36,10 +36,6 @@ import AvatarGenerator from './components/AvatarGenerator';
 import AirtableSettingsModal from './components/AirtableSettingsModal';
 import AirtablePromptLibraryModal from './components/AirtablePromptLibraryModal';
 import Toast from './components/Toast';
-import EbookGenerator, { EbookOutline } from './components/EbookGenerator';
-import EbookDisplay, { Ebook } from './components/EbookDisplay';
-import BookCoverGenerator from './components/BookCoverGenerator';
-import EbookManager from './components/EbookManager';
 
 type AspectRatio = typeof ASPECT_RATIOS[number];
 type ToastState = { show: boolean; message: string; type: 'success' | 'error' };
@@ -48,13 +44,18 @@ const GroundingSourcesDisplay: React.FC<{ sources: any[] }> = ({ sources }) => (
     <div className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
         <h4 className="text-xs font-semibold text-gray-400 mb-2">Enhanced with information from:</h4>
         <ul className="flex flex-wrap gap-2">
-            {sources.map((source, index) => (
-                <li key={index}>
-                    <a href={source.web?.uri} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 bg-blue-900/50 px-2 py-1 rounded-full hover:bg-blue-900">
-                        {source.web?.title || new URL(source.web.uri).hostname}
-                    </a>
-                </li>
-            ))}
+            {sources.map((source, index) => {
+                const uri = source.web?.uri;
+                if (!uri) return null; // Skip rendering if no URI is provided
+                const title = source.web?.title || new URL(uri).hostname;
+                return (
+                    <li key={index}>
+                        <a href={uri} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 bg-blue-900/50 px-2 py-1 rounded-full hover:bg-blue-900">
+                            {title}
+                        </a>
+                    </li>
+                );
+            })}
         </ul>
     </div>
 );
@@ -93,12 +94,6 @@ const App: React.FC = () => {
   const [chatHistory, setChatHistory] = useState<string[]>([]);
   // Blog Post state
   const [blogPostContent, setBlogPostContent] = useState<string | null>(null);
-  // Ebook state
-  const [ebookContent, setEbookContent] = useState<Ebook | null>(null);
-  const [ebookGenerationProgress, setEbookGenerationProgress] = useState<string>('');
-  const [ebookCoverUrl, setEbookCoverUrl] = useState<string | null>(null);
-  const [isGeneratingCover, setIsGeneratingCover] = useState<boolean>(false);
-  const [uploadedPdfUrl, setUploadedPdfUrl] = useState<string | null>(null);
   // Airtable state
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isPromptLibraryOpen, setIsPromptLibraryOpen] = useState(false);
@@ -170,18 +165,15 @@ const App: React.FC = () => {
   };
   
   const handleSetMode = (newMode: GeneratorMode) => {
-    if (newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'product-studio' || newMode === 'tshirt-mockup' || newMode === 'blog-post' || newMode === 'avatar-generator' || newMode === 'ebook-generator' || newMode === 'book-cover-generator' || newMode === 'ebook-manager') {
+    if (newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'product-studio' || newMode === 'tshirt-mockup' || newMode === 'blog-post' || newMode === 'avatar-generator') {
       setImageUrls(null);
       setGeneratedImagesData([]);
     } else {
       setPreviewVideoUrl(null);
       setFinalVideoUrl(null);
       setBlogPostContent(null);
-      setEbookContent(null);
-      setEbookCoverUrl(null);
-      setUploadedPdfUrl(null);
     }
-    if (newMode === 'avatar-generator' || newMode === 'book-cover-generator') {
+    if (newMode === 'avatar-generator') {
       setAspectRatio('9:16');
     }
     if (newMode !== 'animate-image') {
@@ -189,13 +181,6 @@ const App: React.FC = () => {
     }
     if (mode === 'creative-chat' && newMode !== 'creative-chat') {
       handleResetChat();
-    }
-    if (newMode !== 'ebook-generator') {
-      setEbookContent(null);
-      setEbookCoverUrl(null);
-    }
-    if (newMode !== 'ebook-manager') {
-        setUploadedPdfUrl(null);
     }
     setMode(newMode);
   };
@@ -257,7 +242,6 @@ const App: React.FC = () => {
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
-    setEbookContent(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
 
@@ -294,7 +278,6 @@ const App: React.FC = () => {
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
-    setEbookContent(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
 
@@ -327,7 +310,6 @@ const App: React.FC = () => {
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
-    setEbookContent(null);
     
     const adPrompt = `UGC ad for ${productName}: ${productDescription}`;
     
@@ -352,7 +334,6 @@ const App: React.FC = () => {
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
-    setEbookContent(null);
 
     const mockupPrompt = `T-shirt mockup with user-provided design.`;
 
@@ -383,7 +364,6 @@ const App: React.FC = () => {
     setImageUrls(null);
     setGeneratedImagesData([]);
     setBlogPostContent(null);
-    setEbookContent(null);
 
     if (isPreview) {
       setPreviewVideoUrl(null);
@@ -418,7 +398,6 @@ const App: React.FC = () => {
     setImageUrls(null);
     setGeneratedImagesData([]);
     setBlogPostContent(null);
-    setEbookContent(null);
 
     if (isPreview) {
         setPreviewVideoUrl(null);
@@ -559,7 +538,6 @@ const App: React.FC = () => {
       setFinalVideoUrl(null);
       setPreviewVideoUrl(null);
       setBlogPostContent(null);
-      setEbookContent(null);
       setEditModalInfo({ isOpen: false, imageUrl: null, mode: 'inpaint' });
       setExpandModalInfo({ isOpen: false, imageUrl: null });
       setAirtableRecord(null); // Image actions create new content, so clear the prompt context
@@ -586,7 +564,6 @@ const App: React.FC = () => {
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
-    setEbookContent(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
     setAirtableRecord(null);
@@ -637,7 +614,6 @@ const App: React.FC = () => {
     setIsLoading(true);
     setError(null);
     setBlogPostContent(null);
-    setEbookContent(null);
     // Clear other content types
     setImageUrls(null);
     setGeneratedImagesData([]);
@@ -656,49 +632,31 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const handleGenerateEbook = useCallback(async (outline: EbookOutline, bookIdea: string) => {
-    setIsLoading(true);
-    setError(null);
-    setBlogPostContent(null);
-    setImageUrls(null);
-    setGeneratedImagesData([]);
-    setFinalVideoUrl(null);
-    setPreviewVideoUrl(null);
-    setEbookGenerationProgress('Starting generation...');
-    setEbookCoverUrl(null);
-    
-    const initialEbookState: Ebook = {
-      title: outline.title,
-      author: outline.author,
-      chapters: outline.chapters.map(title => ({ title, content: '' })),
-      originalIdea: bookIdea,
-    };
-    setEbookContent(initialEbookState);
+  const handleGenerateHeaderImage = useCallback(() => {
+    if (!blogPostContent) return;
 
-    try {
-      for (let i = 0; i < outline.chapters.length; i++) {
-        // FIX: The `outline.chapters` is an array of strings, so access the element directly.
-        const chapterTitle = outline.chapters[i];
-        setEbookGenerationProgress(`Writing Chapter ${i + 1}: ${chapterTitle}`);
-        
-        const chapterContent = await generateEbookChapterContent(chapterTitle, outline.title, bookIdea);
-        
-        setEbookContent(prev => {
-          if (!prev) return null;
-          const newChapters = [...prev.chapters];
-          newChapters[i].content = chapterContent;
-          return { ...prev, chapters: newChapters };
-        });
-      }
-      setEbookGenerationProgress('Ebook generation complete!');
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
-      setError(`Failed to generate ebook content: ${message}`);
-      setEbookGenerationProgress('Generation failed.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+    // Extract title from H1 tag
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = blogPostContent;
+    const h1 = tempDiv.querySelector('h1');
+    const title = h1 ? h1.innerText : 'Untitled Blog Post';
+    
+    // Create a new prompt
+    const newPrompt = `A visually appealing header image for a blog post titled "${title}". The style should be professional and engaging.`;
+
+    // Switch mode and set prompt
+    setMode('text-to-image');
+    setAspectRatio('16:9'); // Good default for headers
+    setPrompt(newPrompt);
+    setPromptBeforeEnhance(null);
+    setInspirationPrompts([]);
+    setGroundingSources(null);
+    setImageUrls(null); // Clear previous images
+    setGeneratedImagesData([]);
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    showToast('Prompt for header image has been set!', 'success');
+  }, [blogPostContent]);
 
   const handleSaveToAirtable = useCallback(async (image: SavedImage) => {
     if (!airtableConfig) {
@@ -769,29 +727,17 @@ const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleGenerateBookCover = useCallback(async (title: string, author: string, synopsis: string, style: string) => {
-    setIsLoading(true);
-    setError(null);
-    setImageUrls(null);
-    setGeneratedImagesData([]);
-
-    try {
-        const resultUrls = await generateBookCover(title, synopsis, style);
-        // We just display the cover images, not save them to the main gallery automatically
-        setImageUrls(resultUrls);
-        setGeneratedImagesData([]); 
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
-      setError(`Failed to generate book cover: ${message}`);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleRemoveBackgroundForStudio = useCallback((img: string) => {
+    // This is a wrapper around the geminiService `imageAction` to be passed to ProductStudio.
+    // By using useCallback with an empty dependency array, we ensure this function's reference
+    // is stable across re-renders, preventing an infinite loop in ProductStudio's useEffect hook.
+    return imageAction(img, "remove the background, make it transparent");
   }, []);
 
   const isAnyLoading = isLoading || isPreviewLoading || isEnhancing || isInspiring || isFetchingFromAirtable;
-  const isImageDisplayMode = ['text-to-image', 'ugc-ad', 'product-studio', 'tshirt-mockup', 'avatar-generator', 'book-cover-generator', 'creative-chat', 'image-to-prompt'].includes(mode);
+  const isImageDisplayMode = ['text-to-image', 'ugc-ad', 'product-studio', 'tshirt-mockup', 'avatar-generator', 'creative-chat', 'image-to-prompt'].includes(mode);
   const isVideoDisplayMode = ['text-to-video', 'animate-image'].includes(mode);
-  const isTextDisplayMode = ['blog-post', 'ebook-generator', 'ebook-manager'].includes(mode);
+  const isTextDisplayMode = ['blog-post'].includes(mode);
 
   return (
     <div className="bg-gray-900 text-white min-h-screen flex flex-col items-center font-sans">
@@ -881,7 +827,7 @@ const App: React.FC = () => {
               <>
                 <h2 className="text-xl font-bold text-indigo-400">Product Studio</h2>
                 <ProductStudio
-                  removeBackground={(img) => imageAction(img, "remove the background, make it transparent")}
+                  removeBackground={handleRemoveBackgroundForStudio}
                   generateProductScene={generateProductScene}
                   onGenerationComplete={handleSuccessfulGeneration}
                   setIsLoading={setIsLoading}
@@ -902,31 +848,6 @@ const App: React.FC = () => {
                 <h2 className="text-xl font-bold text-indigo-400">Blog Post Generator</h2>
                 <BlogPostGenerator onSubmit={handleGenerateBlogPost} isLoading={isLoading} />
               </>
-            )}
-
-            {mode === 'ebook-generator' && (
-              <>
-                <h2 className="text-xl font-bold text-indigo-400">Ebook Generator</h2>
-                <EbookGenerator
-                  onGenerateEbook={handleGenerateEbook}
-                  isLoading={isLoading}
-                  setError={setError}
-                />
-              </>
-            )}
-
-            {mode === 'book-cover-generator' && (
-              <>
-                <h2 className="text-xl font-bold text-indigo-400">Book Cover Generator</h2>
-                <BookCoverGenerator onSubmit={handleGenerateBookCover} isLoading={isLoading} />
-              </>
-            )}
-            
-            {mode === 'ebook-manager' && (
-                <>
-                    <h2 className="text-xl font-bold text-indigo-400">Upload Your Ebook</h2>
-                    <EbookManager onPdfUpload={setUploadedPdfUrl} uploadedPdfUrl={uploadedPdfUrl} />
-                </>
             )}
 
             {(mode === 'text-to-video' || mode === 'animate-image') && (
@@ -973,6 +894,7 @@ const App: React.FC = () => {
                 onRemoveBackground={(img) => handleImageAction(removeBackground, img)}
                 onUpscale={(img) => handleImageAction(upscaleImage, img)}
                 onAnimateClick={handleAnimateImage}
+                onGetPrompt={handleGeneratePromptFromImage}
                 onSaveToAirtable={handleSaveToAirtable}
                 airtableConfigured={!!airtableConfig}
                 savingToAirtableState={savingToAirtableState}
@@ -990,29 +912,7 @@ const App: React.FC = () => {
               />
             )}
             {isTextDisplayMode && mode === 'blog-post' && (
-                <BlogPostDisplay content={blogPostContent} isLoading={isLoading} />
-            )}
-            {isTextDisplayMode && (mode === 'ebook-generator' || mode === 'ebook-manager') && (
-              <EbookDisplay
-                ebook={ebookContent}
-                isLoading={isLoading}
-                progressMessage={ebookGenerationProgress}
-                coverUrl={ebookCoverUrl}
-                isGeneratingCover={isGeneratingCover}
-                onGenerateCover={async () => {
-                  if (!ebookContent) return;
-                  setIsGeneratingCover(true);
-                  try {
-                    const [cover] = await generateBookCover(ebookContent.title, ebookContent.originalIdea, 'Fantasy Painting');
-                    setEbookCoverUrl(cover);
-                  } catch (e) {
-                     setError("Failed to generate cover.");
-                  } finally {
-                    setIsGeneratingCover(false);
-                  }
-                }}
-                uploadedPdfUrl={uploadedPdfUrl}
-              />
+                <BlogPostDisplay content={blogPostContent} isLoading={isLoading} onGenerateHeaderClick={handleGenerateHeaderImage} />
             )}
           </div>
         </div>
@@ -1028,6 +928,7 @@ const App: React.FC = () => {
             onRemoveBackground={(img) => handleImageAction(removeBackground, img)}
             onUpscale={(img) => handleImageAction(upscaleImage, img)}
             onSetReference={handleSetReferenceImage}
+            onGetPrompt={handleGeneratePromptFromImage}
             onSaveToAirtable={handleSaveToAirtable}
             airtableConfigured={!!airtableConfig}
             savingToAirtableState={savingToAirtableState}
@@ -1046,7 +947,6 @@ const App: React.FC = () => {
             if (editModalInfo.mode === 'inpaint') {
                 handleImageAction(editImage, masked, p);
             } else {
-// FIX: The error on this line was likely due to a type mismatch in a different component (ProductStudio) that was misreported by the compiler. No change is needed here, the fix is applied to the ProductStudio component's props.
                 handleImageAction(removeObject, masked);
             }
         }}

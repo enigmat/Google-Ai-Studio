@@ -21,6 +21,7 @@ interface SavedGalleryProps {
   onRemoveBackground: (imageUrl: string) => void;
   onUpscale: (imageUrl: string) => void;
   onSetReference: (imageUrl: string) => void;
+  onGetPrompt: (imageUrl: string) => void;
   onSaveToAirtable: (image: SavedImage) => void;
   airtableConfigured: boolean;
   savingToAirtableState: { status: 'idle' | 'saving'; imageId: string | null };
@@ -30,7 +31,7 @@ interface SavedGalleryProps {
 
 const SavedGallery: React.FC<SavedGalleryProps> = ({ 
     images, onDeleteImage, onClearAll, onDownloadClick, onEditClick, onRemoveObjectClick, onExpandClick,
-    onRemoveBackground, onUpscale, onSetReference, onSaveToAirtable, airtableConfigured, savingToAirtableState,
+    onRemoveBackground, onUpscale, onSetReference, onGetPrompt, onSaveToAirtable, airtableConfigured, savingToAirtableState,
     showSaveConfirmation, isGeneratingMetadata
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -130,6 +131,7 @@ const SavedGallery: React.FC<SavedGalleryProps> = ({
                     )}
                   </ActionButton>
                 )}
+                <ActionButton onClick={() => onGetPrompt(image.url)} title="Get Prompt from Image" className="bg-teal-600 hover:bg-teal-700"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" /></svg></ActionButton>
                 <ActionButton onClick={() => onSetReference(image.url)} title="Use as Reference" className="bg-green-600 hover:bg-green-700">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clipRule="evenodd" /></svg>
                 </ActionButton>

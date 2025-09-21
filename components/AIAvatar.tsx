@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { GeneratorMode } from '../constants';
 
@@ -58,21 +59,6 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
     "Be specific with your topic for a more focused article.",
     "Choosing the right 'Tone of Voice' can make your post resonate with your audience.",
     "Defining a 'Target Audience' helps me tailor the language and complexity.",
-  ],
-  'ebook-generator': [
-    "Start with a strong, clear idea for your book. The more detail you provide, the better the outline will be.",
-    "Don't be afraid to edit the AI-generated outline. It's a great starting point, but you can tailor it to your vision.",
-    "Generating a full ebook takes time. The AI writes one chapter at a time, so please be patient!",
-  ],
-  'book-cover-generator': [
-    "A good synopsis is key! Mention the genre, main characters, and key plot points.",
-    "Try different artistic styles to find the perfect cover for your book.",
-    "The AI won't add text. You can download the cover and add your title and author name using any image editor."
-  ],
-  'ebook-manager': [
-    "Upload your existing ebook in PDF format here.",
-    "Once uploaded, a download button will appear in the display area on the right.",
-    "This is a great way to keep your finished ebooks handy within the app!"
   ],
 };
 
@@ -202,7 +188,7 @@ const AIAvatar: React.FC<AIAvatarProps> = ({ mode, error, isLoading, isPreviewLo
         </div>
         <button 
             onClick={handleAvatarClick}
-            className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-indigo-400 animate-pulse-slow"
+            className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-indigo-400 animate-pulse"
             aria-label="AI Assistant"
         >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" viewBox="0 0 20 20" fill="currentColor">

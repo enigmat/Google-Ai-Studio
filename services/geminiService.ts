@@ -1,4 +1,9 @@
 
+
+
+
+
+
 import { GoogleGenAI, Modality, Type, GenerateContentResponse } from "@google/genai";
 
 // The AI client is initialized lazily to avoid crashing the app if the API key is missing.
@@ -82,14 +87,25 @@ export const generateImageFromPrompt = async (prompt: string, count: number, asp
     });
 
     if (response.generatedImages && response.generatedImages.length > 0) {
-      const imageUrls = response.generatedImages.map(img => {
-        const base64ImageBytes: string = img.image.imageBytes;
-        return `data:image/png;base64,${base64ImageBytes}`;
-      });
-      return imageUrls;
-    } else {
-      throw new Error("No images were generated. The response might have been blocked.");
+      const imageUrls = response.generatedImages
+        .map(img => {
+            // FIX: Access imageBytes and mimeType from the nested 'image' property.
+            if (img.image?.imageBytes) {
+                const base64ImageBytes: string = img.image.imageBytes;
+                const mimeType = img.image.mimeType || 'image/png';
+                return `data:${mimeType};base64,${base64ImageBytes}`;
+            }
+            console.warn("Received an image object without data:", img);
+            return null;
+        })
+        .filter((url): url is string => url !== null);
+
+      if (imageUrls.length > 0) {
+          return imageUrls;
+      }
     }
+
+    throw new Error("No images were generated. The response might have been blocked.");
   } catch (error) {
     console.error("Error generating image with Gemini API:", error);
     if (error instanceof Error) {
@@ -518,104 +534,4 @@ Ensure the output is only the HTML content for the blog post.`;
     }
     throw new Error("An unknown error occurred while generating the blog post.");
   }
-};
-
-export const generateBookCover = async (title: string, synopsis: string, style: string): Promise<string[]> => {
-  const aiClient = getAiClient();
-  const finalPrompt = `A professional book cover design for a book titled "${title}". The story is about: "${synopsis}". The artistic style should be: ${style}. The cover must be visually striking and appropriate for the genre. Do not include any text, titles, or author names on the image. The image should be a clean piece of art.`;
-
-  try {
-    const response = await aiClient.models.generateImages({
-        model: 'imagen-4.0-generate-001',
-        prompt: finalPrompt,
-        config: {
-          numberOfImages: 2, // Provide two options
-          outputMimeType: 'image/png',
-          aspectRatio: '9:16', // Typical book cover aspect ratio
-        },
-    });
-
-    if (response.generatedImages && response.generatedImages.length > 0) {
-      const imageUrls = response.generatedImages.map(img => {
-        const base64ImageBytes: string = img.image.imageBytes;
-        return `data:image/png;base64,${base64ImageBytes}`;
-      });
-      return imageUrls;
-    } else {
-      throw new Error("No cover images were generated. The response might have been blocked.");
-    }
-  } catch (error) {
-    console.error("Error generating book cover with Gemini API:", error);
-    if (error instanceof Error) {
-        throw new Error(`Gemini API Error: ${error.message}`);
-    }
-    throw new Error("An unknown error occurred while generating the book cover.");
-  }
-};
-
-export const generateEbookOutline = async (topic: string): Promise<{ title: string; author: string; chapters: string[] }> => {
-    const aiClient = getAiClient();
-    try {
-        const response = await aiClient.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: `Based on the following book idea, generate a plausible book outline. The book idea is: "${topic}". Provide a creative and fitting title, a plausible author name, and an array of 8 to 12 descriptive chapter titles that map out a logical progression for the book.`,
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        title: { type: Type.STRING, description: 'A creative title for the book.' },
-                        author: { type: Type.STRING, description: 'A plausible author name for the book.' },
-                        chapters: {
-                            type: Type.ARRAY,
-                            description: 'An array of 8-12 descriptive chapter titles.',
-                            items: { type: Type.STRING }
-                        }
-                    }
-                }
-            }
-        });
-
-        const json = JSON.parse(response.text);
-        if (json.title && json.author && Array.isArray(json.chapters)) {
-            return json;
-        }
-        throw new Error("Invalid format for ebook outline response.");
-
-    } catch (error) {
-        console.error("Error generating ebook outline:", error);
-        if (error instanceof Error) {
-            throw new Error(`Gemini API Error: ${error.message}`);
-        }
-        throw new Error("An unknown error occurred while generating the ebook outline.");
-    }
-};
-
-export const generateEbookChapterContent = async (chapterTitle: string, bookTitle: string, bookTopic: string): Promise<string> => {
-    const aiClient = getAiClient();
-    try {
-        const systemInstruction = `You are an accomplished author tasked with writing a chapter for a book. You write engaging, well-structured content and format it in clean HTML using only <p> tags for paragraphs. Do not include <h1>, <h2>, <html>, <head>, or <body> tags.`;
-        
-        const contents = `Write the full content for the chapter titled "${chapterTitle}". This chapter is part of the book "${bookTitle}", which is about "${bookTopic}". The chapter should be substantive and well-developed, with multiple paragraphs. Ensure the output is only the HTML content for the chapter body.`;
-
-        const response = await aiClient.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents,
-            config: {
-                systemInstruction,
-            },
-        });
-
-        if (!response.text.trim()) {
-            throw new Error("The model returned empty chapter content.");
-        }
-
-        return response.text;
-    } catch (error) {
-        console.error("Error generating ebook chapter content with Gemini API:", error);
-        if (error instanceof Error) {
-            throw new Error(`Gemini API Error: ${error.message}`);
-        }
-        throw new Error("An unknown error occurred while generating the chapter content.");
-    }
 };

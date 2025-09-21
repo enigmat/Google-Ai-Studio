@@ -53,7 +53,7 @@ const TshirtMockupGenerator: React.FC<TshirtMockupGeneratorProps> = ({ onSubmit,
     onSubmit(designImageUrl, selectedMockupUrl);
   };
   
-  const checkerboardBg = `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' size='32' fill-opacity='0.1'%3e%3cpath d='M0 0 H16 V16 H0 Z' fill='rgb(107 114 128)'/%3e%3cpath d='M16 16 H32 V32 H16 Z' fill='rgb(107 114 128)'/%3e%3c/svg%3e")`;
+  const checkerboardBg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none'%3E%3Crect width='8' height='8' fill='%23374151'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%23374151'/%3E%3Crect width='8' height='8' x='8' fill='%231F2937'/%3E%3Crect y='8' width='8' height='8' fill='%231F2937'/%3E%3C/svg%3E")`;
 
 
   return (
@@ -95,7 +95,13 @@ const TshirtMockupGenerator: React.FC<TshirtMockupGeneratorProps> = ({ onSubmit,
                     <img 
                         src={designImageUrl} 
                         alt="Design overlay" 
-                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[65%] w-[30%] h-auto object-contain pointer-events-none transition-all"
+                        className="absolute h-auto object-contain pointer-events-none transition-all"
+                        style={{
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -65%)',
+                            width: '30%'
+                        }}
                     />
                 )}
                  {!selectedMockupUrl && (

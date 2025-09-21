@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 
 interface ProductStudioProps {
   removeBackground: (imageUrl: string) => Promise<string>;
@@ -15,18 +15,28 @@ const ProductStudio: React.FC<ProductStudioProps> = ({ removeBackground, generat
     const [scenePrompt, setScenePrompt] = useState('');
     const [isProcessing, setIsProcessing] = useState(false); // For background removal
 
+    // Use refs to hold the latest version of function props to avoid including them
+    // in the main useEffect's dependency array, which can cause infinite loops if they
+    // are not perfectly memoized in the parent component.
+    const removeBackgroundRef = useRef(removeBackground);
+    const setErrorRef = useRef(setError);
+    useEffect(() => {
+        removeBackgroundRef.current = removeBackground;
+        setErrorRef.current = setError;
+    });
+
     useEffect(() => {
         const processImages = async () => {
             if (originalImages.length > 0) {
                 setIsProcessing(true);
-                setError(null);
+                setErrorRef.current(null);
                 try {
-                    const results = await Promise.all(originalImages.map(img => removeBackground(img)));
+                    const results = await Promise.all(originalImages.map(img => removeBackgroundRef.current(img)));
                     setIsolatedImages(results);
                     setStep('compose');
                 } catch (e: unknown) {
                     const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
-                    setError(`Failed to remove background: ${message}`);
+                    setErrorRef.current(`Failed to remove background: ${message}`);
                     setStep('upload');
                     setOriginalImages([]);
                 } finally {
@@ -35,7 +45,7 @@ const ProductStudio: React.FC<ProductStudioProps> = ({ removeBackground, generat
             }
         };
         processImages();
-    }, [originalImages, removeBackground, setError]);
+    }, [originalImages]);
 
     const handleFileChange = (files: FileList | null) => {
         if (files && files.length > 0) {
@@ -96,7 +106,7 @@ const ProductStudio: React.FC<ProductStudioProps> = ({ removeBackground, generat
         setError(null);
     };
 
-    const checkerboardBg = `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' size='32' fill-opacity='0.1'%3e%3cpath d='M0 0 H16 V16 H0 Z' fill='rgb(107 114 128)'/%3e%3cpath d='M16 16 H32 V32 H16 Z' fill='rgb(107 114 128)'/%3e%3c/svg%3e")`;
+    const checkerboardBg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none'%3E%3Crect width='8' height='8' fill='%23374151'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%23374151'/%3E%3Crect width='8' height='8' x='8' fill='%231F2937'/%3E%3Crect y='8' width='8' height='8' fill='%231F2937'/%3E%3C/svg%3E")`;
 
 
     return (

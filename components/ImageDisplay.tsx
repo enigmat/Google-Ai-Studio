@@ -13,6 +13,7 @@ interface ImageDisplayProps {
   onUpscale?: (imageUrl: string) => void;
   onAnimateClick?: (imageUrl: string) => void;
   onExpandClick?: (imageUrl: string) => void;
+  onGetPrompt?: (imageUrl: string) => void;
   onSaveToAirtable?: (image: SavedImage) => void;
   airtableConfigured?: boolean;
   savingToAirtableState?: { status: 'idle' | 'saving'; imageId: string | null };
@@ -25,7 +26,7 @@ interface ImageDisplayProps {
 const ImageDisplay: React.FC<ImageDisplayProps> = ({ 
     imagesData, isLoading, aspectRatio, 
     onDownloadClick = () => {}, onEditClick = () => {}, onRemoveObjectClick = () => {}, onRemoveBackground = () => {}, onUpscale = () => {}, onAnimateClick = () => {}, onExpandClick = () => {},
-    onSaveToAirtable = () => {}, airtableConfigured = false, savingToAirtableState = { status: 'idle', imageId: null },
+    onGetPrompt = () => {}, onSaveToAirtable = () => {}, airtableConfigured = false, savingToAirtableState = { status: 'idle', imageId: null },
     hideActions = false,
     airtableRecord, onSyncAirtable, isSyncingAirtable
 }) => {
@@ -33,18 +34,6 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
     if (count <= 1) return 'grid-cols-1';
     return 'grid-cols-2';
   }
-
-  const getAspectRatioClass = (ratio: string) => {
-    switch (ratio) {
-      case '16:9':
-        return 'aspect-video';
-      case '9:16':
-        return 'aspect-[9/16]';
-      case '1:1':
-      default:
-        return 'aspect-square';
-    }
-  };
 
   const ActionButton: React.FC<{ onClick: () => void, title: string, children: React.ReactNode, className?: string, disabled?: boolean }> = 
     ({ onClick, title, children, className = 'bg-gray-600/80 hover:bg-gray-700', disabled = false }) => (
@@ -59,7 +48,10 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
   );
 
   return (
-    <div className={`relative w-full ${getAspectRatioClass(aspectRatio)} bg-gray-800 border-2 border-dashed border-gray-700 rounded-lg flex items-center justify-center p-4 transition-all duration-300`}>
+    <div 
+      className="relative w-full bg-gray-800 border-2 border-dashed border-gray-700 rounded-lg flex items-center justify-center p-4 transition-all duration-300"
+      style={{ aspectRatio: aspectRatio.replace(':', ' / ') }}
+    >
       {airtableRecord && onSyncAirtable && (imagesData && imagesData.length > 0) && (
         <div className="absolute top-3 left-3 z-10">
           <button
@@ -127,6 +119,7 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
                       <ActionButton onClick={() => onExpandClick(image.url)} title="Expand" className="bg-purple-600 hover:bg-purple-700"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 3a1 1 0 011-1h4a1 1 0 110 2H5v2a1 1 0 11-2 0V4a1 1 0 011-1zm2 10H4a1 1 0 100 2h1v2a1 1 0 102 0v-3a1 1 0 00-1-1zm10-2h1a1 1 0 100-2h-1V9a1 1 0 10-2 0v3a1 1 0 001 1zm-2-8h4a1 1 0 011 1v4a1 1 0 11-2 0V5h-2a1 1 0 110-2z" clipRule="evenodd" /></svg></ActionButton>
                       <ActionButton onClick={() => onRemoveObjectClick(image.url)} title="Remove Object" className="bg-purple-600 hover:bg-purple-700"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.367zM14.89 13.477L6.524 5.11A6 6 0 0114.89 13.477zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clipRule="evenodd" /></svg></ActionButton>
                       <ActionButton onClick={() => onEditClick(image.url)} title="Inpaint" className="bg-purple-600 hover:bg-purple-700"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg></ActionButton>
+                      <ActionButton onClick={() => onGetPrompt(image.url)} title="Get Prompt from Image" className="bg-teal-600 hover:bg-teal-700"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" /></svg></ActionButton>
                       <ActionButton onClick={() => onDownloadClick(image.url)} title="Download" className="bg-indigo-600 hover:bg-indigo-700"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" /></svg></ActionButton>
                     </div>
                   </>

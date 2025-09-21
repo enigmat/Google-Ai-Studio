@@ -1,3 +1,16 @@
+// FIX: This component is unused and depends on a non-existent 'generateEbookOutline' function.
+// The component is stubbed out to resolve the compilation error.
+import React from 'react';
+
+// FIX: This component is not used in the application and imports a non-existent function 'generateEbookOutline'.
+// Stubbing component to resolve compilation error.
+const EbookGenerator: React.FC<any> = () => {
+    return null;
+};
+
+export default EbookGenerator;
+
+/*
 import React, { useState } from 'react';
 import { generateEbookOutline } from '../services/geminiService';
 
@@ -132,3 +145,4 @@ const EbookGenerator: React.FC<EbookGeneratorProps> = ({ onGenerateEbook, isLoad
 };
 
 export default EbookGenerator;
+*/

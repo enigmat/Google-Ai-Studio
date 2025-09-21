@@ -105,18 +105,12 @@ const ExpandModal: React.FC<ExpandModalProps> = ({ isOpen, imageUrl, onClose, on
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 transition-opacity animate-[fade-in_0.2s_ease-out]"
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-fade-in"
       onClick={isLoading ? undefined : onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="expand-modal-title"
     >
-      <style>{`
-        @keyframes fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-      `}</style>
       <div
         className="bg-gray-800 rounded-xl shadow-2xl p-6 w-full max-w-4xl border border-gray-700 flex flex-col lg:flex-row gap-6"
         onClick={(e) => e.stopPropagation()}

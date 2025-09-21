@@ -92,8 +92,6 @@ const EbookDisplay: React.FC<EbookDisplayProps> = ({ ebook, isLoading, progressM
             const docxContent = await htmlToDocx(html, undefined, {
                 margins: { top: 720, right: 720, bottom: 720, left: 720 },
             });
-            // FIX: The html-to-docx library can return a Blob or an ArrayBuffer.
-            // We ensure the content is a Blob before passing it to the download helper.
             const docxBlob = docxContent instanceof Blob
               ? docxContent
               : new Blob([docxContent], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
@@ -179,11 +177,11 @@ const EbookDisplay: React.FC<EbookDisplayProps> = ({ ebook, isLoading, progressM
           <div className="prose prose-invert prose-sm sm:prose-base max-w-none w-full h-full overflow-y-auto pr-2">
             <div className="w-full mb-8">
               {isGeneratingCover ? (
-                  <div className="w-full aspect-[9/16] max-w-sm mx-auto bg-gray-900 rounded-lg flex items-center justify-center"><Loader message="Designing cover..." /></div>
+                  <div className="w-full max-w-sm mx-auto bg-gray-900 rounded-lg flex items-center justify-center" style={{ aspectRatio: '9 / 16' }}><Loader message="Designing cover..." /></div>
               ) : coverUrl ? (
-                  <img src={coverUrl} alt="Generated Book Cover" className="w-full aspect-[9/16] max-w-sm object-cover mx-auto rounded-lg shadow-2xl" />
+                  <img src={coverUrl} alt="Generated Book Cover" className="w-full max-w-sm object-cover mx-auto rounded-lg shadow-2xl" style={{ aspectRatio: '9 / 16' }} />
               ) : (
-                  <div className="w-full aspect-[9/16] max-w-sm mx-auto bg-gray-900 rounded-lg flex flex-col items-center justify-center border-2 border-dashed border-gray-600">
+                  <div className="w-full max-w-sm mx-auto bg-gray-900 rounded-lg flex flex-col items-center justify-center border-2 border-dashed border-gray-600" style={{ aspectRatio: '9 / 16' }}>
                     <button onClick={onGenerateCover} className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-lg hover:bg-indigo-700">Generate Cover</button>
                   </div>
               )}

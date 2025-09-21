@@ -138,7 +138,7 @@ const AirtablePromptLibraryModal: React.FC<AirtablePromptLibraryModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 transition-opacity animate-[fade-in_0.2s_ease-out]"
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-fade-in"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
