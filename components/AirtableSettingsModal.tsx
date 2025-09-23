@@ -112,10 +112,11 @@ const AirtableSettingsModal: React.FC<AirtableSettingsModalProps> = ({ isOpen, o
                         <div className="text-xs font-mono bg-gray-800 p-2 rounded mt-1 space-y-2">
                             <div>
                                 <strong className="text-sky-300">For Prompt Library:</strong>
+                                <p className="text-xs italic text-gray-500 my-1">The app looks for prompts in a field named `Prompt` first, then falls back to `Name` (Airtable's default).</p>
                                 <ul className="list-disc list-inside ml-4">
-                                    <li><code className="bg-gray-700 px-1 rounded">Prompt</code> (Long text) - <strong>Required</strong></li>
-                                    <li><code className="bg-gray-700 px-1 rounded">Title</code> (Single line text)</li>
-                                    <li><code className="bg-gray-700 px-1 rounded">Tags</code> (Single line text, comma-separated)</li>
+                                    <li><code className="bg-gray-700 px-1 rounded">Prompt</code> (Long text) or <code className="bg-gray-700 px-1 rounded">Name</code></li>
+                                    <li><code className="bg-gray-700 px-1 rounded">Title</code> (Single line text) <span className="text-gray-500">(Optional)</span></li>
+                                    <li><code className="bg-gray-700 px-1 rounded">Tags</code> (Single line text) <span className="text-gray-500">(Optional, comma-separated)</span></li>
                                 </ul>
                             </div>
                              <div>
@@ -125,10 +126,10 @@ const AirtableSettingsModal: React.FC<AirtableSettingsModalProps> = ({ isOpen, o
                                     <li><code className="bg-gray-700 px-1 rounded">Prompt</code> (Long text)</li>
                                     <li><code className="bg-gray-700 px-1 rounded">Description</code> (Single line text)</li>
                                     <li><code className="bg-gray-700 px-1 rounded">Tags</code> (Single line text, comma-separated)</li>
-                                    <li><code className="bg-gray-700 px-1 rounded">Image Data URL</code> (Long text)</li>
+                                    <li><code className="bg-gray-700 px-1 rounded">Image Thumbnail URL</code> (Long text)</li>
                                     <li><code className="bg-gray-700 px-1 rounded">Original Prompt</code> (Long text)</li>
                                 </ul>
-                                <p className="text-gray-400 text-xs italic mt-1">Note: The image is saved as a text Data URL because the Airtable API cannot process image uploads directly from the browser.</p>
+                                <p className="text-gray-400 text-xs italic mt-1">Note: A compressed thumbnail of the image is saved as a Data URL. The full-resolution image remains in your browser's "Saved Creations" gallery.</p>
                             </div>
                         </div>
                     </li>

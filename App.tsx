@@ -1,7 +1,7 @@
 
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { generateImageFromPrompt, enhancePrompt, editImage, removeBackground, upscaleImage, expandImage, generateImageFromReference, generateUgcProductAd, generateVideoFromPrompt, generateVideoFromImage, generateImageMetadata, getPromptInspiration, generatePromptFromImage, imageAction, removeObject, generateProductScene, generateTshirtMockup, generateBlogPost, generateSocialMediaPost, SocialMediaPost } from './services/geminiService';
+import { generateImageFromPrompt, enhancePrompt, editImage, removeBackground, upscaleImage, expandImage, generateImageFromReference, generateUgcProductAd, generateVideoFromPrompt, generateVideoFromImage, generateImageMetadata, getPromptInspiration, generatePromptFromImage, imageAction, removeObject, generateProductScene, generateTshirtMockup, generateBlogPost, generateSocialMediaPost, SocialMediaPost, generateVideoScriptFromText, VideoScene } from './services/geminiService';
 import { saveImageToAirtable, AirtableConfig, getRandomPromptFromAirtable, getPromptsFromAirtable, updateAirtableRecord } from './services/airtableService';
 import Header from './components/Header';
 import PromptInput from './components/PromptInput';
@@ -38,9 +38,20 @@ import AirtablePromptLibraryModal from './components/AirtablePromptLibraryModal'
 import Toast from './components/Toast';
 import SocialMediaPostGenerator from './components/SocialMediaPostGenerator';
 import SocialMediaPostDisplay from './components/SocialMediaPostDisplay';
+import VariationCountSelector from './components/VariationCountSelector';
+import FlyerGenerator from './components/FlyerGenerator';
+import ExplainerVideoGenerator from './components/ExplainerVideoGenerator';
+import ExplainerVideoDisplay from './components/ExplainerVideoDisplay';
+import LogoGenerator from './components/LogoGenerator';
+import ThumbnailGenerator from './components/ThumbnailGenerator';
+// FIX: Removed EbookStudio and EbookDisplay imports as the feature has been disabled.
+// import EbookStudio from './components/EbookStudio';
+// import EbookDisplay from './components/EbookDisplay';
+
 
 type AspectRatio = typeof ASPECT_RATIOS[number];
 type ToastState = { show: boolean; message: string; type: 'success' | 'error' };
+type StoryboardScene = VideoScene & { videoUrl?: string };
 
 const GroundingSourcesDisplay: React.FC<{ sources: any[] }> = ({ sources }) => (
     <div className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
@@ -74,6 +85,7 @@ const App: React.FC = () => {
   const [videoDuration, setVideoDuration] = useState<number>(4);
   const [videoStyle, setVideoStyle] = useState<string>('None');
   const [imageCount, setImageCount] = useState<number>(1);
+  const [variationCount, setVariationCount] = useState<number>(4);
   const [selectedStyle, setSelectedStyle] = useState<string>('None');
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('1:1');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -98,6 +110,9 @@ const App: React.FC = () => {
   const [blogPostContent, setBlogPostContent] = useState<string | null>(null);
   // Social Media state
   const [socialMediaPosts, setSocialMediaPosts] = useState<SocialMediaPost[] | null>(null);
+  // Explainer video state
+  const [videoStoryboard, setVideoStoryboard] = useState<StoryboardScene[] | null>(null);
+  const [explainerVideoProgress, setExplainerVideoProgress] = useState<string>('');
   // Airtable state
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isPromptLibraryOpen, setIsPromptLibraryOpen] = useState(false);
@@ -152,8 +167,16 @@ const App: React.FC = () => {
       if (finalVideoUrl && finalVideoUrl.startsWith('blob:')) {
         URL.revokeObjectURL(finalVideoUrl);
       }
+      // Also clean up storyboard URLs
+      if (videoStoryboard) {
+        videoStoryboard.forEach(scene => {
+          if (scene.videoUrl && scene.videoUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(scene.videoUrl);
+          }
+        });
+      }
     };
-  }, [previewVideoUrl, finalVideoUrl]);
+  }, [previewVideoUrl, finalVideoUrl, videoStoryboard]);
 
   const saveConfirmationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
@@ -169,17 +192,34 @@ const App: React.FC = () => {
   };
   
   const handleSetMode = (newMode: GeneratorMode) => {
-    if (newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'product-studio' || newMode === 'tshirt-mockup' || ['blog-post', 'social-media-post'].includes(newMode) || newMode === 'avatar-generator') {
+    const isNewModeTextual = ['blog-post', 'social-media-post'].includes(newMode);
+    const isNewModeVideo = newMode.endsWith('video') || newMode === 'animate-image';
+    
+    if (isNewModeTextual || isNewModeVideo || ['product-studio', 'tshirt-mockup', 'avatar-generator', 'flyer-generator', 'logo-generator', 'thumbnail-generator'].includes(newMode)) {
       setImageUrls(null);
       setGeneratedImagesData([]);
-    } else {
+    }
+    if (!isNewModeVideo) {
       setPreviewVideoUrl(null);
       setFinalVideoUrl(null);
+    }
+    if (!isNewModeTextual) {
       setBlogPostContent(null);
       setSocialMediaPosts(null);
     }
-    if (newMode === 'avatar-generator') {
+    if (newMode !== 'explainer-video') {
+      setVideoStoryboard(null);
+      setExplainerVideoProgress('');
+    }
+
+    if (newMode === 'avatar-generator' || newMode === 'flyer-generator') {
       setAspectRatio('9:16');
+    }
+    if (newMode === 'logo-generator') {
+        setAspectRatio('1:1');
+    }
+    if (newMode === 'thumbnail-generator') {
+        setAspectRatio('16:9');
     }
     if (newMode !== 'animate-image') {
       setSourceImageForVideo(null);
@@ -235,7 +275,7 @@ const App: React.FC = () => {
       }
   }, [promptBeforeEnhance]);
 
-  const handleGenerateImage = useCallback(async () => {
+  const handleGenerateImage = useCallback(async (countOverride?: number) => {
     if (!prompt.trim()) {
       setError('Please enter a prompt.');
       return;
@@ -250,10 +290,12 @@ const App: React.FC = () => {
     setSocialMediaPosts(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
+    setVideoStoryboard(null);
 
     const style = STYLES.find(s => s.name === selectedStyle);
     const finalPrompt = style && style.promptSuffix ? `${prompt.trim()}${style.promptSuffix}` : prompt.trim();
-    
+    const countToUse = typeof countOverride === 'number' ? countOverride : imageCount;
+
     try {
       let generatedImageUrls: string[];
 
@@ -261,7 +303,7 @@ const App: React.FC = () => {
         const resultUrl = await generateImageFromReference(referenceImageUrl, finalPrompt, negativePrompt);
         generatedImageUrls = [resultUrl];
       } else {
-        generatedImageUrls = await generateImageFromPrompt(finalPrompt, imageCount, aspectRatio, negativePrompt);
+        generatedImageUrls = await generateImageFromPrompt(finalPrompt, countToUse, aspectRatio, negativePrompt);
       }
       
       handleSuccessfulGeneration(generatedImageUrls, finalPrompt);
@@ -287,6 +329,7 @@ const App: React.FC = () => {
     setSocialMediaPosts(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
+    setVideoStoryboard(null);
 
     try {
       let generatedImageUrls: string[];
@@ -318,6 +361,7 @@ const App: React.FC = () => {
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
     setSocialMediaPosts(null);
+    setVideoStoryboard(null);
     
     const adPrompt = `UGC ad for ${productName}: ${productDescription}`;
     
@@ -343,6 +387,7 @@ const App: React.FC = () => {
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
     setSocialMediaPosts(null);
+    setVideoStoryboard(null);
 
     const mockupPrompt = `T-shirt mockup with user-provided design.`;
 
@@ -374,6 +419,7 @@ const App: React.FC = () => {
     setGeneratedImagesData([]);
     setBlogPostContent(null);
     setSocialMediaPosts(null);
+    setVideoStoryboard(null);
 
     if (isPreview) {
       setPreviewVideoUrl(null);
@@ -409,6 +455,7 @@ const App: React.FC = () => {
     setGeneratedImagesData([]);
     setBlogPostContent(null);
     setSocialMediaPosts(null);
+    setVideoStoryboard(null);
 
     if (isPreview) {
         setPreviewVideoUrl(null);
@@ -553,6 +600,7 @@ const App: React.FC = () => {
       setEditModalInfo({ isOpen: false, imageUrl: null, mode: 'inpaint' });
       setExpandModalInfo({ isOpen: false, imageUrl: null });
       setAirtableRecord(null); // Image actions create new content, so clear the prompt context
+      setVideoStoryboard(null);
 
       try {
           const resultImageUrl = await action(...args);
@@ -580,6 +628,7 @@ const App: React.FC = () => {
     setGroundingSources(null);
     setInspirationPrompts([]);
     setAirtableRecord(null);
+    setVideoStoryboard(null);
 
     try {
       const generatedPrompt = await generatePromptFromImage(imageUrl);
@@ -633,6 +682,7 @@ const App: React.FC = () => {
     setGeneratedImagesData([]);
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
+    setVideoStoryboard(null);
     
     try {
       const content = await generateBlogPost(topic, tone, length, audience);
@@ -656,6 +706,7 @@ const App: React.FC = () => {
     setGeneratedImagesData([]);
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
+    setVideoStoryboard(null);
     
     try {
       const posts = await generateSocialMediaPost(topic, platform, tone, audience, includeHashtags, includeEmojis);
@@ -716,6 +767,168 @@ const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     showToast('Prompt for header image has been set!', 'success');
   }, [blogPostContent]);
+  
+  const handleGenerateFlyer = useCallback(async (title: string, date: string, time: string, location: string, info: string, style: string, color: string) => {
+      setIsLoading(true);
+      setError(null);
+      setImageUrls(null);
+      setGeneratedImagesData([]);
+      setFinalVideoUrl(null);
+      setPreviewVideoUrl(null);
+      setBlogPostContent(null);
+      setSocialMediaPosts(null);
+      setGroundingSources(null);
+      setInspirationPrompts([]);
+      setVideoStoryboard(null);
+
+      const styleDetails = {
+          'Modern & Clean': 'minimalist design, sans-serif fonts, generous white space, clean lines',
+          'Bold & Energetic': 'vibrant colors, dynamic typography, bold shapes, high energy, abstract patterns',
+          'Elegant & Minimalist': 'serif fonts, simple color palette, lots of negative space, a single impactful graphic element',
+          'Retro & Funky': '70s inspired fonts, warm and groovy color palette, psychedelic patterns, grainy texture',
+          'Corporate & Professional': 'clean layout, blue and grey color scheme, sharp lines, professional fonts like Helvetica or Arial'
+      }[style] || '';
+
+      const fullPrompt = `Create a visually stunning, professional event flyer with the following details. The text MUST be beautifully and legibly integrated into the design.
+- Event Title: "${title}"
+${date ? `- Date: "${date}"` : ''}
+${time ? `- Time: "${time}"` : ''}
+${location ? `- Location: "${location}"` : ''}
+${info ? `- Additional Info: "${info}"` : ''}
+- Visual Style: ${style}. ${styleDetails}.
+- Primary Color Palette: Centered around ${color}.
+- Layout: The design should be well-balanced, eye-catching, and suitable for printing or social media. Do not include placeholder text. All text must be clearly readable.`;
+
+      try {
+          const generatedImageUrls = await generateImageFromPrompt(fullPrompt, 1, '9:16', 'blurry text, unreadable fonts, watermarks, lorem ipsum');
+          handleSuccessfulGeneration(generatedImageUrls, fullPrompt);
+      } catch (e: unknown) {
+          const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+          setError(`Failed to generate flyer: ${message}`);
+      } finally {
+          setIsLoading(false);
+      }
+  }, [handleSuccessfulGeneration]);
+
+    const handleGenerateLogo = useCallback(async (companyName: string, slogan: string, style: string, colors: string, iconDesc: string, negativePrompt: string) => {
+        setIsLoading(true);
+        setError(null);
+        setImageUrls(null);
+        setGeneratedImagesData([]);
+        setFinalVideoUrl(null);
+        setPreviewVideoUrl(null);
+        setBlogPostContent(null);
+        setSocialMediaPosts(null);
+        setGroundingSources(null);
+        setInspirationPrompts([]);
+        setVideoStoryboard(null);
+
+        const fullPrompt = `Professional logo design for a company named "${companyName}". Style: ${style}. The logo must feature a vector icon representing: "${iconDesc}". ${colors ? `Primary color palette: ${colors}.` : ''} ${slogan ? `If possible, elegantly incorporate the slogan "${slogan}".` : ''} The design must be simple, clean, and memorable, suitable for use on a website and business cards. Solid white background.`;
+
+        try {
+            const generatedImageUrls = await generateImageFromPrompt(fullPrompt, 4, '1:1', `photorealistic, 3d, complex details, shadows, gradients, ${negativePrompt}`);
+            handleSuccessfulGeneration(generatedImageUrls, fullPrompt);
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+            setError(`Failed to generate logo: ${message}`);
+        } finally {
+            setIsLoading(false);
+            setPromptBeforeEnhance(null);
+        }
+    }, [handleSuccessfulGeneration]);
+
+    const handleGenerateThumbnail = useCallback(async (mainTitle: string, subtitle: string, iconDesc: string, backgroundDesc: string, style: string, color: string) => {
+        setIsLoading(true);
+        setError(null);
+        setImageUrls(null);
+        setGeneratedImagesData([]);
+        setFinalVideoUrl(null);
+        setPreviewVideoUrl(null);
+        setBlogPostContent(null);
+        setSocialMediaPosts(null);
+        setGroundingSources(null);
+        setInspirationPrompts([]);
+        setVideoStoryboard(null);
+
+        const styleDetails = {
+            'Bold & Punchy': 'dramatic lighting, high contrast, bold sans-serif fonts, dynamic composition',
+            'Clean & Minimalist': 'minimalist design, sans-serif fonts, generous white space, clean lines, simple color palette',
+            'Gaming': 'vibrant neon colors, futuristic fonts, energetic, action-packed scene',
+            'Tech Review': 'clean layout, modern fonts, professional, high-tech aesthetic, blue and silver color scheme',
+            'Vlog': 'friendly and approachable style, handwritten or casual fonts, a realistic and inviting scene',
+            'Documentary': 'serious and informative tone, serif fonts, cinematic lighting, realistic imagery'
+        }[style] || '';
+        
+        const promptParts = [
+            `YouTube thumbnail for a video titled "${mainTitle}".`,
+            `Style: ${style}. ${styleDetails}.`,
+        ];
+
+        if (subtitle) {
+            promptParts.push(`Include the subtitle "${subtitle}" in a smaller font.`);
+        }
+        if (iconDesc) {
+            promptParts.push(`Feature a central icon or image representing: "${iconDesc}".`);
+        }
+        if (backgroundDesc) {
+            promptParts.push(`The background should be: "${backgroundDesc}".`);
+        }
+        if (color) {
+            promptParts.push(`The primary color palette is ${color}.`);
+        }
+
+        promptParts.push(`The text must be the main focus, extremely clear, legible, and visually integrated into the design. High contrast, eye-catching, engaging, professional design. Clickbait style.`);
+
+        const fullPrompt = promptParts.join(' ');
+        const negativePrompt = 'blurry text, unreadable fonts, distorted text, messy, cluttered, watermarks, signature';
+
+        try {
+            const generatedImageUrls = await generateImageFromPrompt(fullPrompt, 1, '16:9', negativePrompt);
+            handleSuccessfulGeneration(generatedImageUrls, fullPrompt);
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+            setError(`Failed to generate thumbnail: ${message}`);
+        } finally {
+            setIsLoading(false);
+            setPromptBeforeEnhance(null);
+        }
+    }, [handleSuccessfulGeneration]);
+
+  const handleGenerateExplainerVideo = useCallback(async (textContent: string) => {
+      setIsLoading(true);
+      setError(null);
+      setVideoStoryboard(null);
+      setExplainerVideoProgress("Step 1/2: Generating script and storyboard...");
+
+      try {
+          // Step 1: Generate script
+          const scriptData = await generateVideoScriptFromText(textContent);
+          const initialStoryboard: StoryboardScene[] = scriptData.scenes;
+          setVideoStoryboard(initialStoryboard);
+
+          // Step 2: Generate videos for each scene
+          for (let i = 0; i < initialStoryboard.length; i++) {
+              setExplainerVideoProgress(`Step 2/2: Generating video for scene ${i + 1} of ${initialStoryboard.length}...`);
+              // Using a short duration and preview for speed and cost-effectiveness
+              const videoUrl = await generateVideoFromPrompt(initialStoryboard[i].visualDescription, 2, true); 
+              
+              // Update state with the new video URL for the correct scene
+              setVideoStoryboard(currentStoryboard => {
+                  if (!currentStoryboard) return null;
+                  const newStoryboard = [...currentStoryboard];
+                  newStoryboard[i] = { ...newStoryboard[i], videoUrl };
+                  return newStoryboard;
+              });
+          }
+          setExplainerVideoProgress("Storyboard generation complete!");
+      } catch (e) {
+          const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+          setError(`Failed to generate explainer video: ${message}`);
+          setExplainerVideoProgress('');
+      } finally {
+          setIsLoading(false);
+      }
+  }, []);
 
   const handleSaveToAirtable = useCallback(async (image: SavedImage) => {
     if (!airtableConfig) {
@@ -794,7 +1007,7 @@ const App: React.FC = () => {
   }, []);
 
   const isAnyLoading = isLoading || isPreviewLoading || isEnhancing || isInspiring || isFetchingFromAirtable;
-  const isImageDisplayMode = ['text-to-image', 'ugc-ad', 'product-studio', 'tshirt-mockup', 'avatar-generator', 'creative-chat', 'image-to-prompt'].includes(mode);
+  const isImageDisplayMode = ['text-to-image', 'image-variations', 'ugc-ad', 'product-studio', 'tshirt-mockup', 'avatar-generator', 'creative-chat', 'image-to-prompt', 'flyer-generator', 'logo-generator', 'thumbnail-generator'].includes(mode);
   const isVideoDisplayMode = ['text-to-video', 'animate-image'].includes(mode);
   const isTextDisplayMode = ['blog-post', 'social-media-post'].includes(mode);
 
@@ -823,7 +1036,7 @@ const App: React.FC = () => {
                     setPromptBeforeEnhance={setPromptBeforeEnhance}
                     negativePrompt={negativePrompt}
                     setNegativePrompt={setNegativePrompt}
-                    onSubmit={handleGenerateImage} 
+                    onSubmit={() => handleGenerateImage()}
                     onEnhance={handleEnhancePrompt} 
                     onInspire={handleGetInspiration}
                     onGetRandomFromAirtable={handleGetRandomPromptFromAirtable}
@@ -847,11 +1060,64 @@ const App: React.FC = () => {
               </>
             )}
 
+            {mode === 'image-variations' && (
+              <>
+                <h2 className="text-xl font-bold text-indigo-400">Image Variations Generator</h2>
+                <PromptInput 
+                    prompt={prompt} 
+                    setPrompt={setPrompt}
+                    setPromptBeforeEnhance={setPromptBeforeEnhance}
+                    negativePrompt={negativePrompt}
+                    setNegativePrompt={setNegativePrompt}
+                    onSubmit={() => handleGenerateImage(variationCount)} 
+                    onEnhance={handleEnhancePrompt} 
+                    onInspire={handleGetInspiration}
+                    onGetRandomFromAirtable={handleGetRandomPromptFromAirtable}
+                    onBrowseAirtable={handleBrowseAirtableClick}
+                    isLoading={isLoading} 
+                    isEnhancing={isEnhancing} 
+                    isInspiring={isInspiring}
+                    isFetchingFromAirtable={isFetchingFromAirtable}
+                    airtableConfigured={!!airtableConfig}
+                    useGoogleSearch={useGoogleSearch}
+                    setUseGoogleSearch={setUseGoogleSearch}
+                    inspirationPrompts={inspirationPrompts}
+                />
+                {groundingSources && <GroundingSourcesDisplay sources={groundingSources} />}
+                <div className="flex flex-col gap-4">
+                  <VariationCountSelector count={variationCount} setCount={setVariationCount} isLoading={isLoading} />
+                  <StyleSelector selectedStyle={selectedStyle} setSelectedStyle={setSelectedStyle} isLoading={isLoading} />
+                  <AspectRatioSelector selectedAspectRatio={aspectRatio} setAspectRatio={setAspectRatio} isLoading={isLoading} isReferenceActive={false} />
+                </div>
+              </>
+            )}
+
             {mode === 'avatar-generator' && (
               <>
                 <h2 className="text-xl font-bold text-indigo-400">Avatar Generator</h2>
                 <AvatarGenerator onSubmit={handleGenerateAvatar} isLoading={isLoading} />
               </>
+            )}
+
+            {mode === 'flyer-generator' && (
+                <>
+                  <h2 className="text-xl font-bold text-indigo-400">Flyer Generator</h2>
+                  <FlyerGenerator onSubmit={handleGenerateFlyer} isLoading={isLoading} />
+                </>
+            )}
+
+            {mode === 'logo-generator' && (
+                <>
+                  <h2 className="text-xl font-bold text-indigo-400">Logo Generator</h2>
+                  <LogoGenerator onSubmit={handleGenerateLogo} isLoading={isLoading} />
+                </>
+            )}
+
+            {mode === 'thumbnail-generator' && (
+                <>
+                  <h2 className="text-xl font-bold text-indigo-400">YouTube Thumbnail Generator</h2>
+                  <ThumbnailGenerator onSubmit={handleGenerateThumbnail} isLoading={isLoading} />
+                </>
             )}
 
             {mode === 'creative-chat' && (
@@ -944,6 +1210,14 @@ const App: React.FC = () => {
                 <VideoStyleSelector selectedStyle={videoStyle} setSelectedStyle={setVideoStyle} isLoading={isAnyLoading} />
               </div>
             )}
+            
+            {mode === 'explainer-video' && (
+              <>
+                <h2 className="text-xl font-bold text-indigo-400">Explainer Video Generator</h2>
+                <ExplainerVideoGenerator onSubmit={handleGenerateExplainerVideo} isLoading={isLoading} />
+              </>
+            )}
+            {/* FIX: The 'ebook' mode section has been removed as the feature is disabled. */}
           </div>
           
           {/* --- RIGHT COLUMN (DISPLAY) --- */}
@@ -983,6 +1257,10 @@ const App: React.FC = () => {
             {isTextDisplayMode && mode === 'social-media-post' && (
                 <SocialMediaPostDisplay posts={socialMediaPosts} isLoading={isLoading} onGenerateImageClick={handleGenerateImageForPost} />
             )}
+            {mode === 'explainer-video' && (
+                <ExplainerVideoDisplay storyboard={videoStoryboard} isLoading={isLoading} progressMessage={explainerVideoProgress} />
+            )}
+            {/* FIX: The 'ebook' display section has been removed as the feature is disabled. */}
           </div>
         </div>
 

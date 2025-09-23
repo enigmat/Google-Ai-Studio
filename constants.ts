@@ -1,6 +1,6 @@
 
 
-export type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup' | 'blog-post' | 'social-media-post' | 'avatar-generator';
+export type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup' | 'blog-post' | 'social-media-post' | 'avatar-generator' | 'image-variations' | 'flyer-generator' | 'explainer-video' | 'logo-generator' | 'thumbnail-generator';
 
 export const EXAMPLE_PROMPTS = [
   "A majestic lion with a cosmic mane",
@@ -21,6 +21,8 @@ export const STYLES = [
 
 export const ASPECT_RATIOS = ['1:1', '16:9', '9:16'] as const;
 
+export const VARIATION_COUNTS = [4, 8, 12] as const;
+
 export const VIDEO_STYLES = [
   { name: 'None', promptSuffix: '' },
   { name: 'Cinematic', promptSuffix: ', cinematic, dramatic lighting, epic score, high contrast, wide-angle shot' },
@@ -28,6 +30,10 @@ export const VIDEO_STYLES = [
   { name: 'Documentary', promptSuffix: ', documentary style, handheld camera feel, natural lighting, realistic motion' },
   { name: 'Abstract', promptSuffix: ', abstract, surreal, non-representational, fluid motion, experimental visuals' },
 ];
+
+export const FLYER_STYLES = ['Modern & Clean', 'Bold & Energetic', 'Elegant & Minimalist', 'Retro & Funky', 'Corporate & Professional'];
+
+export const THUMBNAIL_STYLES = ['Bold & Punchy', 'Clean & Minimalist', 'Gaming', 'Tech Review', 'Vlog', 'Documentary'];
 
 export const TSHIRT_MOCKUPS = [
   { id: 'white', name: 'White T-Shirt', url: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImEiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMCUiIHkyPSIxMDAlIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMDAwIiBzdG9wLW9wYWNpdHk9Ii4xIi8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLW9wYWNpdHk9IjAiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNNTAgMjBjMCAyNSAxMDAgMjUgMTAwIDBMMTYwIDMwbDIwIDEwLTEwIDE0MEgzMEwyMCA0MGwyMC0xMHoiLz48cGF0aCBmaWxsPSJub25lIiBzdHJva2U9IiNFMUUwRTAiIHN0cm9rZS13aWR0aD0iNCIgZD0iTTc1IDIwYzAgMjAgNTAgMjAgNTAgMCIvPjxwYXRoIGZpbGw9InVybCgjYSkiIGQ9Ik01MCAyMGMwIDI1IDEwMCAyNSAxMDAgMEwxNjAgMzBsMjAgMTAtMTAgMTQwSDMwTDIwIDQwbDIwLTEweiIvPjxwYXRoIGZpbGw9IiMwMDAiIG9wYWNpdHk9Ii4wNSIgZD0iTTMwIDE4MGMxMC0xMCAzMC01IDQwIDBsLTIwIDEweiIvPjxwYXRoIGZpbGw9IiMwMDAiIG9wYWNpdHk9Ii4wNSIgZD0iTTE3MCAxODBjLTEwLTEwLTMwLTUtNDAgMGwyMCAxMHoiLz48L3N2Zz4=' },
@@ -52,3 +58,5 @@ export const AVATAR_ART_STYLES = [
   { name: 'Fantasy Art', value: 'fantasy art portrait, D&D character art, epic, magical, detailed armor' },
   { name: 'Watercolor', value: 'watercolor painting portrait, soft wash, paper texture, artistic' }
 ];
+
+export const LOGO_STYLES = ['Minimalist', 'Geometric', 'Modern', 'Vintage', 'Hand-drawn', 'Abstract', 'Lettermark'];

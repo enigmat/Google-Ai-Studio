@@ -30,7 +30,6 @@ const getAiClient = (): GoogleGenAI => {
     return ai;
 };
 
-
 const ENHANCER_SYSTEM_INSTRUCTION = `You will take on the role as the ultimate prompt enhancer for prompts that create AI images for tools like Midjourney, Leonardo AI, DALL-E, and Stable Diffusion. You are a prompt engineering expert that can take the simplest prompts and 10X them to masterful, highly detailed levels that only you could craft.
 
 When given a prompt to enhance, you will inspect it and then provide a new prompt that is 10X better with a lot more elaborate, incredible details, attention to detail, insanely accurate and creative adjectives, camera angles and lenses. You will use the most descriptive details, provide unique keywords, and add an abundance of details to increase the realism of the images that will be created from that prompt. With your knowledge, please include some of the hidden tokens, secrets and keywords to generate extraordinary realistic and unique AI images. Do not respond with anything other than the enhanced prompt itself. Do not add any conversational text or explanations.
@@ -607,4 +606,77 @@ export const generateSocialMediaPost = async (topic: string, platform: string, t
     }
     throw new Error("An unknown error occurred while generating the social media post.");
   }
+};
+
+export interface VideoScene {
+    sceneNumber: number;
+    script: string;
+    visualDescription: string;
+}
+
+export interface VideoScript {
+    summaryScript: string;
+    scenes: VideoScene[];
+}
+
+export const generateVideoScriptFromText = async (text: string): Promise<VideoScript> => {
+    const aiClient = getAiClient();
+    try {
+        const systemInstruction = `You are an expert video scriptwriter. Your task is to analyze the provided text (from a blog post, article, or product page) and transform it into a concise, engaging voiceover script for an explainer video.
+        1. First, create a short, overall summary of the text to be used as a general voiceover.
+        2. Then, break the content down into several distinct scenes (between 3 and 5 scenes).
+        3. For each scene, write a short voiceover script (1-2 sentences).
+        4. For each scene, also write a rich, detailed visual description of what should be shown. This visual description will be used to generate a video clip, so be very specific about the imagery (e.g., "A close-up shot of a scientist adding a blue liquid to a beaker," "An animated graphic showing data points increasing on a chart").
+        Return the result in a structured JSON format.`;
+
+        const contents = `Please analyze the following text and generate a video script:\n\n---\n\n${text}`;
+
+        const response = await aiClient.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents,
+            config: {
+                systemInstruction,
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        summaryScript: {
+                            type: Type.STRING,
+                            description: 'A brief summary of the entire text for a general voiceover.'
+                        },
+                        scenes: {
+                            type: Type.ARRAY,
+                            description: 'An array of scenes for the video storyboard.',
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    sceneNumber: { type: Type.INTEGER },
+                                    script: { type: Type.STRING, description: 'The voiceover script for this specific scene.' },
+                                    visualDescription: { type: Type.STRING, description: 'A detailed visual description for generating a video clip for this scene.' }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+        });
+
+        if (!response.text.trim()) {
+            throw new Error("The model returned an empty script.");
+        }
+
+        const parsedScript = JSON.parse(response.text);
+        if (!parsedScript.scenes || parsedScript.scenes.length === 0) {
+            throw new Error("The model failed to generate any valid scenes.");
+        }
+
+        return parsedScript;
+
+    } catch (error) {
+        console.error("Error generating video script with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while generating the video script.");
+    }
 };

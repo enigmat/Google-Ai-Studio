@@ -16,10 +16,36 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
     "Experiment with different artistic styles to change the look.",
     "Negative prompts help you remove unwanted elements from your image.",
   ],
+  'image-variations': [
+    "Generate up to 12 variations at once to find the perfect image.",
+    "All variations will use the same prompt, style, and aspect ratio.",
+    "Use a detailed prompt to get diverse and interesting results across your variations.",
+  ],
+  'flyer-generator': [
+    "Be specific with your event details for the best results!",
+    "A primary color can help the AI match your brand's style.",
+    "The 'Modern & Clean' style is great for professional events.",
+  ],
+  'explainer-video': [
+    "Paste the full text from a blog post or product page for a comprehensive video.",
+    "The AI will first create a script, then generate video clips for each scene.",
+    "This creates a storyboard. You can use a video editor to combine the clips and add the voiceover!",
+  ],
   'avatar-generator': [
     "Combine different options to create a unique character!",
     "The 'Photorealistic' style can create some amazing portraits.",
     "Try adding specific accessories like 'a silver necklace' or 'cybernetic eye patch' for more detail.",
+  ],
+  'logo-generator': [
+    "Be descriptive with your icon! Instead of 'a bird', try 'a minimalist hummingbird in flight'.",
+    "Minimalist and Geometric styles often produce the cleanest, most professional results.",
+    "Try specifying a color palette like 'warm earth tones' or 'cool blues and greys' to match your brand.",
+  ],
+  // FIX: Add missing tips for 'thumbnail-generator' to satisfy the Record<GeneratorMode, string[]> type.
+  'thumbnail-generator': [
+    "A strong, clear title is key for a good thumbnail.",
+    "Use contrasting colors to make your text pop!",
+    "Think about what would make you click on the video. Be bold!",
   ],
   'creative-chat': [
     "Start by describing an image. Then, tell me what to change!",
