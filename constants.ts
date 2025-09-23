@@ -1,6 +1,6 @@
 
 
-export type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup' | 'blog-post' | 'social-media-post' | 'avatar-generator' | 'image-variations' | 'flyer-generator' | 'explainer-video' | 'logo-generator' | 'thumbnail-generator';
+export type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup' | 'blog-post' | 'social-media-post' | 'avatar-generator' | 'image-variations' | 'flyer-generator' | 'explainer-video' | 'logo-generator' | 'thumbnail-generator' | 'video-green-screen' | 'recreate-thumbnail';
 
 export const EXAMPLE_PROMPTS = [
   "A majestic lion with a cosmic mane",
@@ -16,7 +16,15 @@ export const STYLES = [
   { name: 'Anime', promptSuffix: ', anime art style, cel shaded, vibrant colors, detailed background, masterpiece, from a high-budget anime film' },
   { name: 'Watercolor', promptSuffix: ', watercolor painting, soft wash, wet-on-wet technique, paper texture, vibrant colors, artistic' },
   { name: 'Cyberpunk', promptSuffix: ', cyberpunk aesthetic, neon lighting, futuristic city, dystopian, high-tech, Blade Runner style, cinematic' },
-  { name: 'Fantasy', promptSuffix: ', fantasy art, epic, magical, ethereal lighting, mythical creatures, detailed armor, Lord of the Rings inspired' }
+  { name: 'Fantasy', promptSuffix: ', fantasy art, epic, magical, ethereal lighting, mythical creatures, detailed armor, Lord of the Rings inspired' },
+  { name: '3D Model', promptSuffix: ', 3D model, Blender render, Octane render, high detail, physically-based rendering (PBR), polished' },
+  { name: 'Pixel Art', promptSuffix: ', 16-bit pixel art, detailed, vibrant color palette, retro gaming style, sprite' },
+  { name: 'Minimalist', promptSuffix: ', minimalist, clean lines, simple, elegant, negative space, vector art' },
+  { name: 'Steampunk', promptSuffix: ', steampunk, victorian, gears, cogs, steam-powered, intricate details, brass and copper' },
+  { name: 'Vintage Photo', promptSuffix: ', vintage photograph, 1950s, sepia tone, grainy, faded colors, classic car, retro fashion' },
+  { name: 'Comic Book', promptSuffix: ', comic book art, graphic novel style, bold outlines, halftone dots, vibrant colors, dynamic action' },
+  { name: 'Line Art', promptSuffix: ', line art, black and white, clean lines, simple, elegant, minimalist drawing' },
+  { name: 'Digital Painting', promptSuffix: ', digital painting, masterpiece, concept art, detailed, complex, ArtStation trending' }
 ];
 
 export const ASPECT_RATIOS = ['1:1', '16:9', '9:16'] as const;

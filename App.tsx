@@ -44,6 +44,7 @@ import ExplainerVideoGenerator from './components/ExplainerVideoGenerator';
 import ExplainerVideoDisplay from './components/ExplainerVideoDisplay';
 import LogoGenerator from './components/LogoGenerator';
 import ThumbnailGenerator from './components/ThumbnailGenerator';
+import RecreateThumbnailGenerator from './components/RecreateThumbnailGenerator';
 // FIX: Removed EbookStudio and EbookDisplay imports as the feature has been disabled.
 // import EbookStudio from './components/EbookStudio';
 // import EbookDisplay from './components/EbookDisplay';
@@ -52,6 +53,7 @@ import ThumbnailGenerator from './components/ThumbnailGenerator';
 type AspectRatio = typeof ASPECT_RATIOS[number];
 type ToastState = { show: boolean; message: string; type: 'success' | 'error' };
 type StoryboardScene = VideoScene & { videoUrl?: string };
+type InspirationWeight = 'Low' | 'Medium' | 'High';
 
 const GroundingSourcesDisplay: React.FC<{ sources: any[] }> = ({ sources }) => (
     <div className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
@@ -193,9 +195,9 @@ const App: React.FC = () => {
   
   const handleSetMode = (newMode: GeneratorMode) => {
     const isNewModeTextual = ['blog-post', 'social-media-post'].includes(newMode);
-    const isNewModeVideo = newMode.endsWith('video') || newMode === 'animate-image';
+    const isNewModeVideo = newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'video-green-screen';
     
-    if (isNewModeTextual || isNewModeVideo || ['product-studio', 'tshirt-mockup', 'avatar-generator', 'flyer-generator', 'logo-generator', 'thumbnail-generator'].includes(newMode)) {
+    if (isNewModeTextual || isNewModeVideo || ['product-studio', 'tshirt-mockup', 'avatar-generator', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail'].includes(newMode)) {
       setImageUrls(null);
       setGeneratedImagesData([]);
     }
@@ -218,7 +220,7 @@ const App: React.FC = () => {
     if (newMode === 'logo-generator') {
         setAspectRatio('1:1');
     }
-    if (newMode === 'thumbnail-generator') {
+    if (newMode === 'thumbnail-generator' || newMode === 'recreate-thumbnail') {
         setAspectRatio('16:9');
     }
     if (newMode !== 'animate-image') {
@@ -428,7 +430,11 @@ const App: React.FC = () => {
     }
     
     const style = VIDEO_STYLES.find(s => s.name === videoStyle);
-    const finalPrompt = style ? `${videoPrompt.trim()}${style.promptSuffix}` : videoPrompt.trim();
+    let finalPrompt = style ? `${videoPrompt.trim()}${style.promptSuffix}` : videoPrompt.trim();
+
+    if (mode === 'video-green-screen') {
+        finalPrompt = `${finalPrompt}, on a solid green screen background, professional studio lighting, high quality`;
+    }
 
     try {
       const resultUrl = await generateVideoFromPrompt(finalPrompt, videoDuration, isPreview);
@@ -443,7 +449,7 @@ const App: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [videoPrompt, videoDuration, videoStyle]);
+  }, [videoPrompt, videoDuration, videoStyle, mode]);
 
   const handleGenerateVideoFromImage = useCallback(async (imageUrl: string, motionPrompt: string, isPreview: boolean) => {
     const setLoading = isPreview ? setIsPreviewLoading : setIsLoading;
@@ -894,6 +900,47 @@ ${info ? `- Additional Info: "${info}"` : ''}
         }
     }, [handleSuccessfulGeneration]);
 
+  const handleRecreateThumbnail = useCallback(async (imageUrl: string, changesPrompt: string, weight: InspirationWeight) => {
+        setIsLoading(true);
+        setError(null);
+        setImageUrls(null);
+        setGeneratedImagesData([]);
+        setFinalVideoUrl(null);
+        setPreviewVideoUrl(null);
+        setBlogPostContent(null);
+        setSocialMediaPosts(null);
+        setGroundingSources(null);
+        setInspirationPrompts([]);
+        setVideoStoryboard(null);
+
+        let recreationPrompt: string;
+        switch (weight) {
+            case 'Low':
+                recreationPrompt = `Inspired by the colors and general style of the provided image, create a new high-quality, eye-catching YouTube thumbnail about: "${changesPrompt}".`;
+                break;
+            case 'Medium':
+                recreationPrompt = `Use the provided image as a strong style and composition reference. Create a new high-quality, eye-catching YouTube thumbnail about: "${changesPrompt}".`;
+                break;
+            case 'High':
+            default:
+                recreationPrompt = `Closely recreate the layout, composition, lighting, and style of the provided image. The new subject should be about: "${changesPrompt}". The final image must be a high-quality, eye-catching YouTube thumbnail.`;
+                break;
+        }
+
+        try {
+            // Using imageAction as it's designed for image-to-image tasks
+            const resultUrl = await imageAction(imageUrl, recreationPrompt);
+            handleSuccessfulGeneration([resultUrl], recreationPrompt);
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+            setError(`Failed to recreate thumbnail: ${message}`);
+            console.error(e);
+        } finally {
+            setIsLoading(false);
+            setPromptBeforeEnhance(null);
+        }
+    }, [handleSuccessfulGeneration]);
+
   const handleGenerateExplainerVideo = useCallback(async (textContent: string) => {
       setIsLoading(true);
       setError(null);
@@ -1007,8 +1054,8 @@ ${info ? `- Additional Info: "${info}"` : ''}
   }, []);
 
   const isAnyLoading = isLoading || isPreviewLoading || isEnhancing || isInspiring || isFetchingFromAirtable;
-  const isImageDisplayMode = ['text-to-image', 'image-variations', 'ugc-ad', 'product-studio', 'tshirt-mockup', 'avatar-generator', 'creative-chat', 'image-to-prompt', 'flyer-generator', 'logo-generator', 'thumbnail-generator'].includes(mode);
-  const isVideoDisplayMode = ['text-to-video', 'animate-image'].includes(mode);
+  const isImageDisplayMode = ['text-to-image', 'image-variations', 'ugc-ad', 'product-studio', 'tshirt-mockup', 'avatar-generator', 'creative-chat', 'image-to-prompt', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail'].includes(mode);
+  const isVideoDisplayMode = ['text-to-video', 'animate-image', 'video-green-screen'].includes(mode);
   const isTextDisplayMode = ['blog-post', 'social-media-post'].includes(mode);
 
   return (
@@ -1120,6 +1167,13 @@ ${info ? `- Additional Info: "${info}"` : ''}
                 </>
             )}
 
+            {mode === 'recreate-thumbnail' && (
+                <>
+                  <h2 className="text-xl font-bold text-indigo-400">Recreate Thumbnail</h2>
+                  <RecreateThumbnailGenerator onSubmit={handleRecreateThumbnail} isLoading={isLoading} />
+                </>
+            )}
+
             {mode === 'creative-chat' && (
                 <>
                     <h2 className="text-xl font-bold text-indigo-400">Creative Chat</h2>
@@ -1182,10 +1236,16 @@ ${info ? `- Additional Info: "${info}"` : ''}
               </>
             )}
 
-            {(mode === 'text-to-video' || mode === 'animate-image') && (
+            {(mode === 'text-to-video' || mode === 'animate-image' || mode === 'video-green-screen') && (
               <div className="flex flex-col gap-4">
-                <h2 className="text-xl font-bold text-indigo-400">{mode === 'text-to-video' ? 'Text-to-Video Generator' : 'Animate Image'}</h2>
-                {mode === 'text-to-video' ? (
+                <h2 className="text-xl font-bold text-indigo-400">
+                    {mode === 'text-to-video'
+                        ? 'Text-to-Video Generator'
+                        : mode === 'video-green-screen'
+                        ? 'Green Screen Video'
+                        : 'Animate Image'}
+                </h2>
+                {mode === 'text-to-video' || mode === 'video-green-screen' ? (
                   <VideoGenerator 
                     prompt={videoPrompt}
                     setPrompt={setVideoPrompt}

@@ -31,6 +31,11 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
     "The AI will first create a script, then generate video clips for each scene.",
     "This creates a storyboard. You can use a video editor to combine the clips and add the voiceover!",
   ],
+  'video-green-screen': [
+    "Describe the subject or action clearly, like 'a person waving' or 'a cat chasing a laser pointer'.",
+    "The AI will automatically place your subject on a green screen, ready for you to use in video editing software!",
+    "Download the video and use the 'Chroma Key' or 'Ultra Key' effect in your editor to remove the green background.",
+  ],
   'avatar-generator': [
     "Combine different options to create a unique character!",
     "The 'Photorealistic' style can create some amazing portraits.",
@@ -41,11 +46,15 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
     "Minimalist and Geometric styles often produce the cleanest, most professional results.",
     "Try specifying a color palette like 'warm earth tones' or 'cool blues and greys' to match your brand.",
   ],
-  // FIX: Add missing tips for 'thumbnail-generator' to satisfy the Record<GeneratorMode, string[]> type.
   'thumbnail-generator': [
     "A strong, clear title is key for a good thumbnail.",
     "Use contrasting colors to make your text pop!",
     "Think about what would make you click on the video. Be bold!",
+  ],
+  'recreate-thumbnail': [
+    "Upload a high-quality thumbnail for the best results!",
+    "Use the 'High' inspiration weight to copy the style very closely.",
+    "Be descriptive with your changes. Instead of 'a person', try 'a gamer with headphones looking surprised'.",
   ],
   'creative-chat': [
     "Start by describing an image. Then, tell me what to change!",
