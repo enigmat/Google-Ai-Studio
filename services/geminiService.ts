@@ -693,12 +693,12 @@ export interface MusicVideoScript {
     scenes: MusicVideoScene[];
 }
 
-export const generateMusicVideoScript = async (songDescription: string, artistGender: string): Promise<MusicVideoScript> => {
+export const generateMusicVideoScript = async (songDescription: string, artistGender: string, songLength: number): Promise<MusicVideoScript> => {
     const aiClient = getAiClient();
     try {
-        const systemInstruction = `You are a visionary music video director. Your task is to conceptualize a compelling 30-second music video based on a song's description. You will create a storyboard with exactly 5 distinct scenes. Each scene must include a timestamp, a vivid visual description for AI video generation, a specific camera shot, and a description of the artist's action. The total duration must be exactly 30 seconds. The artist is ${artistGender}.`;
+        const systemInstruction = `You are a visionary music video director. Your task is to conceptualize a compelling music video based on a song's description and duration. You will create a storyboard with an appropriate number of distinct scenes to fill the requested video length, assuming each scene is roughly 5-7 seconds long. Each scene must include a scene number, a timestamp, a vivid visual description for AI video generation, a specific camera shot, and a description of the artist's action. The total duration of all scenes combined must closely match the user's requested song length. The artist is ${artistGender}.`;
 
-        const contents = `Create a music video storyboard for a song with the following description: "${songDescription}"`;
+        const contents = `Create a music video storyboard for a ${songLength}-second song with the following description: "${songDescription}"`;
 
         const response = await aiClient.models.generateContent({
             model: 'gemini-2.5-flash',
@@ -711,7 +711,7 @@ export const generateMusicVideoScript = async (songDescription: string, artistGe
                     properties: {
                         scenes: {
                             type: Type.ARRAY,
-                            description: 'An array of 5 scenes for the music video storyboard.',
+                            description: 'An array of scenes for the music video storyboard.',
                             items: {
                                 type: Type.OBJECT,
                                 properties: {
@@ -733,8 +733,8 @@ export const generateMusicVideoScript = async (songDescription: string, artistGe
         }
 
         const parsedScript = JSON.parse(response.text);
-        if (!parsedScript.scenes || parsedScript.scenes.length !== 5) {
-            throw new Error("The model failed to generate exactly 5 valid scenes.");
+        if (!parsedScript.scenes || parsedScript.scenes.length === 0) {
+            throw new Error("The model failed to generate any valid scenes.");
         }
 
         return parsedScript;

@@ -992,7 +992,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
       }
   }, []);
 
-  const handleGenerateMusicVideo = useCallback(async (songDescription: string, artistGender: string) => {
+  const handleGenerateMusicVideo = useCallback(async (songDescription: string, artistGender: string, songLength: number) => {
     setIsLoading(true);
     setError(null);
     setMusicVideoStoryboard(null);
@@ -1006,7 +1006,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
     setSocialMediaPosts(null);
     
     try {
-      const script = await generateMusicVideoScript(songDescription, artistGender);
+      const script = await generateMusicVideoScript(songDescription, artistGender, songLength);
       setMusicVideoStoryboard(script.scenes);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'An unexpected error occurred.';

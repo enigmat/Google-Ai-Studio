@@ -9,7 +9,7 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick }) => {
     <header className="w-full p-4 flex justify-center items-center relative z-10">
       <div className="text-center">
         <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-500">
-          AI Image Generator
+          Kai Inmotion
         </h1>
         <p className="mt-2 text-lg text-gray-400">Powered by Gemini</p>
       </div>

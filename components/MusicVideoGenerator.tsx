@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
 
 interface MusicVideoGeneratorProps {
-  onSubmit: (songDescription: string, artistGender: string) => void;
+  onSubmit: (songDescription: string, artistGender: string, songLength: number) => void;
   isLoading: boolean;
 }
 
 const MusicVideoGenerator: React.FC<MusicVideoGeneratorProps> = ({ onSubmit, isLoading }) => {
   const [songDescription, setSongDescription] = useState('');
   const [artistGender, setArtistGender] = useState('Female');
+  const [songLength, setSongLength] = useState(30);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (songDescription.trim() && !isLoading) {
-      onSubmit(songDescription, artistGender);
+      onSubmit(songDescription, artistGender, songLength);
     }
   };
 
@@ -50,12 +51,19 @@ const MusicVideoGenerator: React.FC<MusicVideoGeneratorProps> = ({ onSubmit, isL
           </select>
         </div>
          <div>
-          <label className="block text-sm font-semibold text-gray-400 mb-1">
-            Video Duration
+          <label htmlFor="song-length" className="block text-sm font-semibold text-gray-400 mb-1">
+            Song Length (seconds)
           </label>
-          <div className="w-full p-3 bg-gray-900 border-2 border-gray-700 rounded-lg text-gray-400">
-            30 seconds (5 scenes)
-          </div>
+          <input
+            type="number"
+            id="song-length"
+            value={songLength}
+            onChange={(e) => setSongLength(Math.max(5, Math.min(180, parseInt(e.target.value, 10))) || 5)}
+            className="w-full p-3 bg-gray-800 border-2 border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300"
+            disabled={isLoading}
+            min="5"
+            max="180"
+          />
         </div>
       </div>
       <button

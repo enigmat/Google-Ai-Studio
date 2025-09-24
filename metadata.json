@@ -1,5 +1,5 @@
 {
-  "name": "Kai inmotion",
+  "name": "Kai Inmotion",
   "description": "A user-friendly interface that takes a text prompt and leverages the Gemini API to generate a corresponding image, transforming your ideas into visuals instantly.",
   "requestFramePermissions": []
 }
