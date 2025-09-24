@@ -17,7 +17,7 @@ import DownloadModal from './components/DownloadModal';
 import EditModal from './components/EditModal';
 import ExpandModal from './components/ExpandModal';
 import ReferenceImageDisplay from './components/ReferenceImageDisplay';
-import { STYLES, ASPECT_RATIOS, VIDEO_STYLES, GeneratorMode } from './constants';
+import { STYLES, ASPECT_RATIOS, VIDEO_STYLES, GeneratorMode, THUMBNAIL_STYLES } from './constants';
 import ModeSelector from './components/ModeSelector';
 import UgcAdGenerator from './components/UgcAdGenerator';
 import VideoGenerator from './components/VideoGenerator';
@@ -856,14 +856,8 @@ ${info ? `- Additional Info: "${info}"` : ''}
         setInspirationPrompts([]);
         setVideoStoryboard(null);
 
-        const styleDetails = {
-            'Bold & Punchy': 'dramatic lighting, high contrast, bold sans-serif fonts, dynamic composition',
-            'Clean & Minimalist': 'minimalist design, sans-serif fonts, generous white space, clean lines, simple color palette',
-            'Gaming': 'vibrant neon colors, futuristic fonts, energetic, action-packed scene',
-            'Tech Review': 'clean layout, modern fonts, professional, high-tech aesthetic, blue and silver color scheme',
-            'Vlog': 'friendly and approachable style, handwritten or casual fonts, a realistic and inviting scene',
-            'Documentary': 'serious and informative tone, serif fonts, cinematic lighting, realistic imagery'
-        }[style] || '';
+        const selectedStyleObject = THUMBNAIL_STYLES.find(s => s.name === style);
+        const styleDetails = selectedStyleObject ? selectedStyleObject.promptSuffix : '';
         
         const promptParts = [
             `YouTube thumbnail for a video titled "${mainTitle}".`,
@@ -1290,10 +1284,10 @@ ${info ? `- Additional Info: "${info}"` : ''}
                 onDownloadClick={openDownloadModal}
                 onEditClick={openEditModal}
                 onRemoveObjectClick={openRemoveObjectModal}
-                onExpandClick={openExpandModal}
                 onRemoveBackground={(img) => handleImageAction(removeBackground, img)}
                 onUpscale={(img) => handleImageAction(upscaleImage, img)}
                 onAnimateClick={handleAnimateImage}
+                onExpandClick={openExpandModal}
                 onGetPrompt={handleGeneratePromptFromImage}
                 onSaveToAirtable={handleSaveToAirtable}
                 airtableConfigured={!!airtableConfig}
@@ -1304,23 +1298,22 @@ ${info ? `- Additional Info: "${info}"` : ''}
               />
             )}
             {isVideoDisplayMode && (
-              <VideoDisplay
+              <VideoDisplay 
                 previewVideoUrl={previewVideoUrl}
                 finalVideoUrl={finalVideoUrl}
                 isLoading={isLoading}
                 isPreviewLoading={isPreviewLoading}
               />
             )}
-            {isTextDisplayMode && mode === 'blog-post' && (
-                <BlogPostDisplay content={blogPostContent} isLoading={isLoading} onGenerateHeaderClick={handleGenerateHeaderImage} />
-            )}
-            {isTextDisplayMode && mode === 'social-media-post' && (
-                <SocialMediaPostDisplay posts={socialMediaPosts} isLoading={isLoading} onGenerateImageClick={handleGenerateImageForPost} />
+            {isTextDisplayMode && (
+              <>
+                {mode === 'blog-post' && <BlogPostDisplay content={blogPostContent} isLoading={isLoading} onGenerateHeaderClick={handleGenerateHeaderImage} />}
+                {mode === 'social-media-post' && <SocialMediaPostDisplay posts={socialMediaPosts} isLoading={isLoading} onGenerateImageClick={handleGenerateImageForPost} />}
+              </>
             )}
             {mode === 'explainer-video' && (
-                <ExplainerVideoDisplay storyboard={videoStoryboard} isLoading={isLoading} progressMessage={explainerVideoProgress} />
+              <ExplainerVideoDisplay storyboard={videoStoryboard} isLoading={isLoading} progressMessage={explainerVideoProgress} />
             )}
-            {/* FIX: The 'ebook' display section has been removed as the feature is disabled. */}
           </div>
         </div>
 
@@ -1332,8 +1325,8 @@ ${info ? `- Additional Info: "${info}"` : ''}
             onEditClick={openEditModal}
             onRemoveObjectClick={openRemoveObjectModal}
             onExpandClick={openExpandModal}
-            onRemoveBackground={(img) => handleImageAction(removeBackground, img)}
-            onUpscale={(img) => handleImageAction(upscaleImage, img)}
+            onRemoveBackground={(imgUrl) => handleImageAction(removeBackground, imgUrl)}
+            onUpscale={(imgUrl) => handleImageAction(upscaleImage, imgUrl)}
             onSetReference={handleSetReferenceImage}
             onGetPrompt={handleGeneratePromptFromImage}
             onSaveToAirtable={handleSaveToAirtable}
@@ -1344,41 +1337,44 @@ ${info ? `- Additional Info: "${info}"` : ''}
         />
       </main>
       <Footer />
-      <DownloadModal isOpen={modalInfo.isOpen} imageUrl={modalInfo.imageUrl} onClose={() => setModalInfo({ isOpen: false, imageUrl: null })} />
+      {/* Modals */}
+      <DownloadModal isOpen={modalInfo.isOpen} imageUrl={modalInfo.imageUrl} onClose={() => setModalInfo({isOpen: false, imageUrl: null})} />
       <EditModal 
-        isOpen={editModalInfo.isOpen}
-        imageUrl={editModalInfo.imageUrl}
+        isOpen={editModalInfo.isOpen} 
+        imageUrl={editModalInfo.imageUrl} 
         mode={editModalInfo.mode}
         onClose={() => setEditModalInfo({ isOpen: false, imageUrl: null, mode: 'inpaint' })}
-        onConfirmEdit={(_orig, masked, p) => {
-            if (editModalInfo.mode === 'inpaint') {
-                handleImageAction(editImage, masked, p);
-            } else {
-                handleImageAction(removeObject, masked);
-            }
+        onConfirmEdit={(original, masked, p) => {
+          if (editModalInfo.mode === 'inpaint') {
+            handleImageAction(editImage, masked, p);
+          } else {
+            handleImageAction(removeObject, masked);
+          }
         }}
         isLoading={isLoading}
       />
-      <ExpandModal
-        isOpen={expandModalInfo.isOpen}
-        imageUrl={expandModalInfo.imageUrl}
+      <ExpandModal 
+        isOpen={expandModalInfo.isOpen} 
+        imageUrl={expandModalInfo.imageUrl} 
         onClose={() => setExpandModalInfo({ isOpen: false, imageUrl: null })}
-        onConfirmExpand={(_orig, expanded, p) => handleImageAction(expandImage, expanded, p)}
+        onConfirmExpand={(original, expanded, p) => handleImageAction(expandImage, expanded, p)}
         isLoading={isLoading}
       />
-      <AirtableSettingsModal
+      <AirtableSettingsModal 
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
         onSave={handleAirtableConfigSave}
         currentConfig={airtableConfig}
       />
-      <AirtablePromptLibraryModal
-        isOpen={isPromptLibraryOpen}
-        onClose={() => setIsPromptLibraryOpen(false)}
-        onSelectPrompt={handleSelectAirtablePrompt}
-        config={airtableConfig!} // It's only opened when config exists
-        getPrompts={getPromptsFromAirtable}
-      />
+      {airtableConfig && (
+        <AirtablePromptLibraryModal 
+            isOpen={isPromptLibraryOpen}
+            onClose={() => setIsPromptLibraryOpen(false)}
+            onSelectPrompt={handleSelectAirtablePrompt}
+            config={airtableConfig}
+            getPrompts={getPromptsFromAirtable}
+        />
+      )}
       <Toast message={toast.message} type={toast.type} show={toast.show} />
       <AIAvatar mode={mode} error={error} isLoading={isLoading} isPreviewLoading={isPreviewLoading} />
     </div>

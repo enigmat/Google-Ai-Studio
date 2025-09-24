@@ -41,7 +41,14 @@ export const VIDEO_STYLES = [
 
 export const FLYER_STYLES = ['Modern & Clean', 'Bold & Energetic', 'Elegant & Minimalist', 'Retro & Funky', 'Corporate & Professional'];
 
-export const THUMBNAIL_STYLES = ['Bold & Punchy', 'Clean & Minimalist', 'Gaming', 'Tech Review', 'Vlog', 'Documentary'];
+export const THUMBNAIL_STYLES = [
+  { name: 'Bold & Punchy', description: 'High contrast, dramatic lighting, and dynamic text. Great for reaction videos and challenges.', promptSuffix: 'dramatic lighting, high contrast, bold sans-serif fonts, dynamic composition' },
+  { name: 'Clean & Minimalist', description: 'Simple, elegant design with lots of clean space. Ideal for educational or business content.', promptSuffix: 'minimalist design, sans-serif fonts, generous white space, clean lines, simple color palette' },
+  { name: 'Gaming', description: 'Vibrant, energetic, and action-packed. Perfect for gameplay videos and live streams.', promptSuffix: 'vibrant neon colors, futuristic fonts, energetic, action-packed scene' },
+  { name: 'Tech Review', description: 'Modern, professional, and sleek. Suitable for product reviews and tech tutorials.', promptSuffix: 'clean layout, modern fonts, professional, high-tech aesthetic, blue and silver color scheme' },
+  { name: 'Vlog', description: 'Friendly and approachable style. Often features a person and casual text.', promptSuffix: 'friendly and approachable style, handwritten or casual fonts, a realistic and inviting scene' },
+  { name: 'Documentary', description: 'Serious, cinematic, and informative. Uses high-quality imagery and formal text.', promptSuffix: 'serious and informative tone, serif fonts, cinematic lighting, realistic imagery' }
+];
 
 export const TSHIRT_MOCKUPS = [
   { id: 'white', name: 'White T-Shirt', url: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImEiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMCUiIHkyPSIxMDAlIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMDAwIiBzdG9wLW9wYWNpdHk9Ii4xIi8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLW9wYWNpdHk9IjAiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNNTAgMjBjMCAyNSAxMDAgMjUgMTAwIDBMMTYwIDMwbDIwIDEwLTEwIDE0MEgzMEwyMCA0MGwyMC0xMHoiLz48cGF0aCBmaWxsPSJub25lIiBzdHJva2U9IiNFMUUwRTAiIHN0cm9rZS13aWR0aD0iNCIgZD0iTTc1IDIwYzAgMjAgNTAgMjAgNTAgMCIvPjxwYXRoIGZpbGw9InVybCgjYSkiIGQ9Ik01MCAyMGMwIDI1IDEwMCAyNSAxMDAgMEwxNjAgMzBsMjAgMTAtMTAgMTQwSDMwTDIwIDQwbDIwLTEweiIvPjxwYXRoIGZpbGw9IiMwMDAiIG9wYWNpdHk9Ii4wNSIgZD0iTTMwIDE4MGMxMC0xMCAzMC01IDQwIDBsLTIwIDEweiIvPjxwYXRoIGZpbGw9IiMwMDAiIG9wYWNpdHk9Ii4wNSIgZD0iTTE3MCAxODBjLTEwLTEwLTMwLTUtNDAgMGwyMCAxMHoiLz48L3N2Zz4=' },

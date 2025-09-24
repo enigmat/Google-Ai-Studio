@@ -11,7 +11,7 @@ const ThumbnailGenerator: React.FC<ThumbnailGeneratorProps> = ({ onSubmit, isLoa
   const [subtitle, setSubtitle] = useState('');
   const [iconDesc, setIconDesc] = useState('');
   const [backgroundDesc, setBackgroundDesc] = useState('');
-  const [style, setStyle] = useState(THUMBNAIL_STYLES[0]);
+  const [style, setStyle] = useState(THUMBNAIL_STYLES[0].name);
   const [color, setColor] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -45,10 +45,29 @@ const ThumbnailGenerator: React.FC<ThumbnailGeneratorProps> = ({ onSubmit, isLoa
       </div>
        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="thumb-style" className="block text-sm font-semibold text-gray-400 mb-1">Visual Style</label>
-          <select id="thumb-style" value={style} onChange={(e) => setStyle(e.target.value)} className={commonInputClasses} disabled={isLoading}>
-            {THUMBNAIL_STYLES.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
+          <label className="block text-sm font-semibold text-gray-400 mb-1">Visual Style</label>
+          <div className="flex flex-wrap gap-2">
+            {THUMBNAIL_STYLES.map(s => (
+                <button
+                    type="button"
+                    key={s.name}
+                    title={s.description}
+                    onClick={() => setStyle(s.name)}
+                    disabled={isLoading}
+                    className={`
+                        px-3 py-2 rounded-lg font-semibold text-sm transition-all duration-200
+                        focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-indigo-500
+                        disabled:opacity-50 disabled:cursor-not-allowed
+                        ${style === s.name
+                            ? 'bg-indigo-600 text-white shadow-md'
+                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        }
+                    `}
+                >
+                    {s.name}
+                </button>
+            ))}
+          </div>
         </div>
         <div>
           <label htmlFor="thumb-color" className="block text-sm font-semibold text-gray-400 mb-1">Color Palette (Optional)</label>
