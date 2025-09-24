@@ -31,6 +31,11 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
     "The AI will first create a script, then generate video clips for each scene.",
     "This creates a storyboard. You can use a video editor to combine the clips and add the voiceover!",
   ],
+  'music-video': [
+    "Describe the song's mood and genre. Is it an upbeat pop track or a moody ballad?",
+    "The AI will generate a 5-scene storyboard for a 30-second video.",
+    "Use the 'Visuals' description for each scene as a prompt in the Text-to-Video generator to create your clips!",
+  ],
   'video-green-screen': [
     "Describe the subject or action clearly, like 'a person waving' or 'a cat chasing a laser pointer'.",
     "The AI will automatically place your subject on a green screen, ready for you to use in video editing software!",

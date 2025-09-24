@@ -1,7 +1,7 @@
 
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { generateImageFromPrompt, enhancePrompt, editImage, removeBackground, upscaleImage, expandImage, generateImageFromReference, generateUgcProductAd, generateVideoFromPrompt, generateVideoFromImage, generateImageMetadata, getPromptInspiration, generatePromptFromImage, imageAction, removeObject, generateProductScene, generateTshirtMockup, generateBlogPost, generateSocialMediaPost, SocialMediaPost, generateVideoScriptFromText, VideoScene } from './services/geminiService';
+import { generateImageFromPrompt, enhancePrompt, editImage, removeBackground, upscaleImage, expandImage, generateImageFromReference, generateUgcProductAd, generateVideoFromPrompt, generateVideoFromImage, generateImageMetadata, getPromptInspiration, generatePromptFromImage, imageAction, removeObject, generateProductScene, generateTshirtMockup, generateBlogPost, generateSocialMediaPost, SocialMediaPost, generateVideoScriptFromText, VideoScene, generateMusicVideoScript, MusicVideoScene } from './services/geminiService';
 import { saveImageToAirtable, AirtableConfig, getRandomPromptFromAirtable, getPromptsFromAirtable, updateAirtableRecord } from './services/airtableService';
 import Header from './components/Header';
 import PromptInput from './components/PromptInput';
@@ -45,6 +45,8 @@ import ExplainerVideoDisplay from './components/ExplainerVideoDisplay';
 import LogoGenerator from './components/LogoGenerator';
 import ThumbnailGenerator from './components/ThumbnailGenerator';
 import RecreateThumbnailGenerator from './components/RecreateThumbnailGenerator';
+import MusicVideoGenerator from './components/MusicVideoGenerator';
+import MusicVideoDisplay from './components/MusicVideoDisplay';
 // FIX: Removed EbookStudio and EbookDisplay imports as the feature has been disabled.
 // import EbookStudio from './components/EbookStudio';
 // import EbookDisplay from './components/EbookDisplay';
@@ -115,6 +117,8 @@ const App: React.FC = () => {
   // Explainer video state
   const [videoStoryboard, setVideoStoryboard] = useState<StoryboardScene[] | null>(null);
   const [explainerVideoProgress, setExplainerVideoProgress] = useState<string>('');
+  // Music video state
+  const [musicVideoStoryboard, setMusicVideoStoryboard] = useState<MusicVideoScene[] | null>(null);
   // Airtable state
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isPromptLibraryOpen, setIsPromptLibraryOpen] = useState(false);
@@ -197,7 +201,7 @@ const App: React.FC = () => {
     const isNewModeTextual = ['blog-post', 'social-media-post'].includes(newMode);
     const isNewModeVideo = newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'video-green-screen';
     
-    if (isNewModeTextual || isNewModeVideo || ['product-studio', 'tshirt-mockup', 'avatar-generator', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail'].includes(newMode)) {
+    if (isNewModeTextual || isNewModeVideo || ['product-studio', 'tshirt-mockup', 'avatar-generator', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'music-video'].includes(newMode)) {
       setImageUrls(null);
       setGeneratedImagesData([]);
     }
@@ -212,6 +216,9 @@ const App: React.FC = () => {
     if (newMode !== 'explainer-video') {
       setVideoStoryboard(null);
       setExplainerVideoProgress('');
+    }
+    if (newMode !== 'music-video') {
+      setMusicVideoStoryboard(null);
     }
 
     if (newMode === 'avatar-generator' || newMode === 'flyer-generator') {
@@ -293,6 +300,7 @@ const App: React.FC = () => {
     setGroundingSources(null);
     setInspirationPrompts([]);
     setVideoStoryboard(null);
+    setMusicVideoStoryboard(null);
 
     const style = STYLES.find(s => s.name === selectedStyle);
     const finalPrompt = style && style.promptSuffix ? `${prompt.trim()}${style.promptSuffix}` : prompt.trim();
@@ -332,6 +340,7 @@ const App: React.FC = () => {
     setGroundingSources(null);
     setInspirationPrompts([]);
     setVideoStoryboard(null);
+    setMusicVideoStoryboard(null);
 
     try {
       let generatedImageUrls: string[];
@@ -364,6 +373,7 @@ const App: React.FC = () => {
     setBlogPostContent(null);
     setSocialMediaPosts(null);
     setVideoStoryboard(null);
+    setMusicVideoStoryboard(null);
     
     const adPrompt = `UGC ad for ${productName}: ${productDescription}`;
     
@@ -390,6 +400,7 @@ const App: React.FC = () => {
     setBlogPostContent(null);
     setSocialMediaPosts(null);
     setVideoStoryboard(null);
+    setMusicVideoStoryboard(null);
 
     const mockupPrompt = `T-shirt mockup with user-provided design.`;
 
@@ -422,6 +433,7 @@ const App: React.FC = () => {
     setBlogPostContent(null);
     setSocialMediaPosts(null);
     setVideoStoryboard(null);
+    setMusicVideoStoryboard(null);
 
     if (isPreview) {
       setPreviewVideoUrl(null);
@@ -462,6 +474,7 @@ const App: React.FC = () => {
     setBlogPostContent(null);
     setSocialMediaPosts(null);
     setVideoStoryboard(null);
+    setMusicVideoStoryboard(null);
 
     if (isPreview) {
         setPreviewVideoUrl(null);
@@ -607,6 +620,7 @@ const App: React.FC = () => {
       setExpandModalInfo({ isOpen: false, imageUrl: null });
       setAirtableRecord(null); // Image actions create new content, so clear the prompt context
       setVideoStoryboard(null);
+      setMusicVideoStoryboard(null);
 
       try {
           const resultImageUrl = await action(...args);
@@ -635,6 +649,7 @@ const App: React.FC = () => {
     setInspirationPrompts([]);
     setAirtableRecord(null);
     setVideoStoryboard(null);
+    setMusicVideoStoryboard(null);
 
     try {
       const generatedPrompt = await generatePromptFromImage(imageUrl);
@@ -689,6 +704,7 @@ const App: React.FC = () => {
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
     setVideoStoryboard(null);
+    setMusicVideoStoryboard(null);
     
     try {
       const content = await generateBlogPost(topic, tone, length, audience);
@@ -713,6 +729,7 @@ const App: React.FC = () => {
     setFinalVideoUrl(null);
     setPreviewVideoUrl(null);
     setVideoStoryboard(null);
+    setMusicVideoStoryboard(null);
     
     try {
       const posts = await generateSocialMediaPost(topic, platform, tone, audience, includeHashtags, includeEmojis);
@@ -786,6 +803,7 @@ const App: React.FC = () => {
       setGroundingSources(null);
       setInspirationPrompts([]);
       setVideoStoryboard(null);
+      setMusicVideoStoryboard(null);
 
       const styleDetails = {
           'Modern & Clean': 'minimalist design, sans-serif fonts, generous white space, clean lines',
@@ -828,6 +846,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
         setGroundingSources(null);
         setInspirationPrompts([]);
         setVideoStoryboard(null);
+        setMusicVideoStoryboard(null);
 
         const fullPrompt = `Professional logo design for a company named "${companyName}". Style: ${style}. The logo must feature a vector icon representing: "${iconDesc}". ${colors ? `Primary color palette: ${colors}.` : ''} ${slogan ? `If possible, elegantly incorporate the slogan "${slogan}".` : ''} The design must be simple, clean, and memorable, suitable for use on a website and business cards. Solid white background.`;
 
@@ -855,6 +874,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
         setGroundingSources(null);
         setInspirationPrompts([]);
         setVideoStoryboard(null);
+        setMusicVideoStoryboard(null);
 
         const selectedStyleObject = THUMBNAIL_STYLES.find(s => s.name === style);
         const styleDetails = selectedStyleObject ? selectedStyleObject.promptSuffix : '';
@@ -906,6 +926,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
         setGroundingSources(null);
         setInspirationPrompts([]);
         setVideoStoryboard(null);
+        setMusicVideoStoryboard(null);
 
         let recreationPrompt: string;
         switch (weight) {
@@ -969,6 +990,31 @@ ${info ? `- Additional Info: "${info}"` : ''}
       } finally {
           setIsLoading(false);
       }
+  }, []);
+
+  const handleGenerateMusicVideo = useCallback(async (songDescription: string, artistGender: string) => {
+    setIsLoading(true);
+    setError(null);
+    setMusicVideoStoryboard(null);
+    // Clear other content types
+    setImageUrls(null);
+    setGeneratedImagesData([]);
+    setFinalVideoUrl(null);
+    setPreviewVideoUrl(null);
+    setVideoStoryboard(null);
+    setBlogPostContent(null);
+    setSocialMediaPosts(null);
+    
+    try {
+      const script = await generateMusicVideoScript(songDescription, artistGender);
+      setMusicVideoStoryboard(script.scenes);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+      setError(`Failed to generate music video script: ${message}`);
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const handleSaveToAirtable = useCallback(async (image: SavedImage) => {
@@ -1051,6 +1097,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
   const isImageDisplayMode = ['text-to-image', 'image-variations', 'ugc-ad', 'product-studio', 'tshirt-mockup', 'avatar-generator', 'creative-chat', 'image-to-prompt', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail'].includes(mode);
   const isVideoDisplayMode = ['text-to-video', 'animate-image', 'video-green-screen'].includes(mode);
   const isTextDisplayMode = ['blog-post', 'social-media-post'].includes(mode);
+  const isMusicVideoDisplayMode = mode === 'music-video';
 
   return (
     <div className="bg-gray-900 text-white min-h-screen flex flex-col items-center font-sans">
@@ -1271,6 +1318,13 @@ ${info ? `- Additional Info: "${info}"` : ''}
                 <ExplainerVideoGenerator onSubmit={handleGenerateExplainerVideo} isLoading={isLoading} />
               </>
             )}
+
+            {mode === 'music-video' && (
+              <>
+                <h2 className="text-xl font-bold text-indigo-400">Music Video Script Generator</h2>
+                <MusicVideoGenerator onSubmit={handleGenerateMusicVideo} isLoading={isLoading} />
+              </>
+            )}
             {/* FIX: The 'ebook' mode section has been removed as the feature is disabled. */}
           </div>
           
@@ -1313,6 +1367,9 @@ ${info ? `- Additional Info: "${info}"` : ''}
             )}
             {mode === 'explainer-video' && (
               <ExplainerVideoDisplay storyboard={videoStoryboard} isLoading={isLoading} progressMessage={explainerVideoProgress} />
+            )}
+            {isMusicVideoDisplayMode && (
+              <MusicVideoDisplay storyboard={musicVideoStoryboard} isLoading={isLoading} />
             )}
           </div>
         </div>

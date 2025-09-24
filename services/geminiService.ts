@@ -680,3 +680,70 @@ export const generateVideoScriptFromText = async (text: string): Promise<VideoSc
         throw new Error("An unknown error occurred while generating the video script.");
     }
 };
+
+export interface MusicVideoScene {
+    sceneNumber: number;
+    timestamp: string;
+    visualDescription: string;
+    cameraShot: string;
+    action: string;
+}
+
+export interface MusicVideoScript {
+    scenes: MusicVideoScene[];
+}
+
+export const generateMusicVideoScript = async (songDescription: string, artistGender: string): Promise<MusicVideoScript> => {
+    const aiClient = getAiClient();
+    try {
+        const systemInstruction = `You are a visionary music video director. Your task is to conceptualize a compelling 30-second music video based on a song's description. You will create a storyboard with exactly 5 distinct scenes. Each scene must include a timestamp, a vivid visual description for AI video generation, a specific camera shot, and a description of the artist's action. The total duration must be exactly 30 seconds. The artist is ${artistGender}.`;
+
+        const contents = `Create a music video storyboard for a song with the following description: "${songDescription}"`;
+
+        const response = await aiClient.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents,
+            config: {
+                systemInstruction,
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        scenes: {
+                            type: Type.ARRAY,
+                            description: 'An array of 5 scenes for the music video storyboard.',
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    sceneNumber: { type: Type.INTEGER },
+                                    timestamp: { type: Type.STRING, description: 'The time range for this scene (e.g., "0:00 - 0:06").' },
+                                    visualDescription: { type: Type.STRING, description: 'A detailed visual description for generating a video clip for this scene.' },
+                                    cameraShot: { type: Type.STRING, description: 'The type of camera shot (e.g., "Close-up", "Wide shot", "Tracking shot").' },
+                                    action: { type: Type.STRING, description: 'What the artist is doing in the scene.' }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+        });
+
+        if (!response.text.trim()) {
+            throw new Error("The model returned an empty script.");
+        }
+
+        const parsedScript = JSON.parse(response.text);
+        if (!parsedScript.scenes || parsedScript.scenes.length !== 5) {
+            throw new Error("The model failed to generate exactly 5 valid scenes.");
+        }
+
+        return parsedScript;
+
+    } catch (error) {
+        console.error("Error generating music video script with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while generating the music video script.");
+    }
+};
