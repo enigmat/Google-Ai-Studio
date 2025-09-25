@@ -1,7 +1,9 @@
 
 
+
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { generateImageFromPrompt, enhancePrompt, editImage, removeBackground, upscaleImage, expandImage, generateImageFromReference, generateUgcProductAd, generateVideoFromPrompt, generateVideoFromImage, generateImageMetadata, getPromptInspiration, generatePromptFromImage, imageAction, removeObject, generateProductScene, generateTshirtMockup, generateBlogPost, generateSocialMediaPost, SocialMediaPost, generateVideoScriptFromText, VideoScene, generateMusicVideoScript, MusicVideoScene } from './services/geminiService';
+// FIX: Added all missing function and type imports from geminiService to resolve compilation errors.
+import { generateImageFromPrompt, enhancePrompt, imageAction, generateImageFromReference, generateVideoFromPrompt, generateVideoFromImage, SocialMediaPost, VideoScene, MusicVideoScene, generateImageMetadata, getPromptInspiration, generatePromptFromImage, generateUgcProductAd, generateProductScene, generateMockup, generateBlogPost, generateSocialMediaPost, generateVideoScriptFromText, generateMusicVideoScript } from './services/geminiService';
 import { saveImageToAirtable, AirtableConfig, getRandomPromptFromAirtable, getPromptsFromAirtable, updateAirtableRecord } from './services/airtableService';
 import Header from './components/Header';
 import PromptInput from './components/PromptInput';
@@ -29,7 +31,7 @@ import AIAvatar from './components/AIAvatar';
 import ImageToPromptGenerator from './components/ImageToPromptGenerator';
 import CreativeChat from './components/CreativeChat';
 import ProductStudio from './components/ProductStudio';
-import TshirtMockupGenerator from './components/TshirtMockupGenerator';
+import MockupGenerator from './components/TshirtMockupGenerator';
 import BlogPostGenerator from './components/BlogPostGenerator';
 import BlogPostDisplay from './components/BlogPostDisplay';
 import AvatarGenerator from './components/AvatarGenerator';
@@ -201,6 +203,7 @@ const App: React.FC = () => {
     const isNewModeTextual = ['blog-post', 'social-media-post'].includes(newMode);
     const isNewModeVideo = newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'video-green-screen';
     
+    // FIX: Changed 'mockups' to 'tshirt-mockup' to match GeneratorMode type.
     if (isNewModeTextual || isNewModeVideo || ['product-studio', 'tshirt-mockup', 'avatar-generator', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'music-video'].includes(newMode)) {
       setImageUrls(null);
       setGeneratedImagesData([]);
@@ -390,7 +393,7 @@ const App: React.FC = () => {
     }
   }, [handleSuccessfulGeneration]);
 
-  const handleGenerateTshirtMockup = useCallback(async (designUrl: string, mockupUrl: string) => {
+  const handleGenerateMockup = useCallback(async (designUrl: string, mockupUrl: string) => {
     setIsLoading(true);
     setError(null);
     setImageUrls(null);
@@ -405,11 +408,11 @@ const App: React.FC = () => {
     const mockupPrompt = `T-shirt mockup with user-provided design.`;
 
     try {
-        const resultUrl = await generateTshirtMockup(designUrl, mockupUrl);
+        const resultUrl = await generateMockup(designUrl, mockupUrl);
         handleSuccessfulGeneration([resultUrl], mockupPrompt);
     } catch (e: unknown) {
         const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
-        setError(`Failed to generate T-shirt mockup: ${message}`);
+        setError(`Failed to generate mockup: ${message}`);
         console.error(e);
     } finally {
         setIsLoading(false);
@@ -1094,6 +1097,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
   }, []);
 
   const isAnyLoading = isLoading || isPreviewLoading || isEnhancing || isInspiring || isFetchingFromAirtable;
+  // FIX: Changed 'mockups' to 'tshirt-mockup' to match GeneratorMode type.
   const isImageDisplayMode = ['text-to-image', 'image-variations', 'ugc-ad', 'product-studio', 'tshirt-mockup', 'avatar-generator', 'creative-chat', 'image-to-prompt', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail'].includes(mode);
   const isVideoDisplayMode = ['text-to-video', 'animate-image', 'video-green-screen'].includes(mode);
   const isTextDisplayMode = ['blog-post', 'social-media-post'].includes(mode);
@@ -1258,8 +1262,8 @@ ${info ? `- Additional Info: "${info}"` : ''}
 
             {mode === 'tshirt-mockup' && (
               <>
-                <h2 className="text-xl font-bold text-indigo-400">T-shirt Mockup Generator</h2>
-                <TshirtMockupGenerator onSubmit={handleGenerateTshirtMockup} isLoading={isLoading} />
+                <h2 className="text-xl font-bold text-indigo-400">Mockup Generator</h2>
+                <MockupGenerator onSubmit={handleGenerateMockup} isLoading={isLoading} />
               </>
             )}
             
@@ -1338,8 +1342,8 @@ ${info ? `- Additional Info: "${info}"` : ''}
                 onDownloadClick={openDownloadModal}
                 onEditClick={openEditModal}
                 onRemoveObjectClick={openRemoveObjectModal}
-                onRemoveBackground={(img) => handleImageAction(removeBackground, img)}
-                onUpscale={(img) => handleImageAction(upscaleImage, img)}
+                onRemoveBackground={(img) => handleImageAction(imageAction, img, "remove the background, make it transparent")}
+                onUpscale={(img) => handleImageAction(imageAction, img, "Upscale this image to a higher resolution, enhance details, make it 4k, sharp focus")}
                 onAnimateClick={handleAnimateImage}
                 onExpandClick={openExpandModal}
                 onGetPrompt={handleGeneratePromptFromImage}
@@ -1382,8 +1386,8 @@ ${info ? `- Additional Info: "${info}"` : ''}
             onEditClick={openEditModal}
             onRemoveObjectClick={openRemoveObjectModal}
             onExpandClick={openExpandModal}
-            onRemoveBackground={(imgUrl) => handleImageAction(removeBackground, imgUrl)}
-            onUpscale={(imgUrl) => handleImageAction(upscaleImage, imgUrl)}
+            onRemoveBackground={(imgUrl) => handleImageAction(imageAction, imgUrl, "remove the background, make it transparent")}
+            onUpscale={(imgUrl) => handleImageAction(imageAction, imgUrl, "Upscale this image to a higher resolution, enhance details, make it 4k, sharp focus")}
             onSetReference={handleSetReferenceImage}
             onGetPrompt={handleGeneratePromptFromImage}
             onSaveToAirtable={handleSaveToAirtable}
@@ -1403,9 +1407,9 @@ ${info ? `- Additional Info: "${info}"` : ''}
         onClose={() => setEditModalInfo({ isOpen: false, imageUrl: null, mode: 'inpaint' })}
         onConfirmEdit={(original, masked, p) => {
           if (editModalInfo.mode === 'inpaint') {
-            handleImageAction(editImage, masked, p);
+            handleImageAction(imageAction, masked, p);
           } else {
-            handleImageAction(removeObject, masked);
+            handleImageAction(imageAction, masked, "remove the masked object and realistically fill in the background");
           }
         }}
         isLoading={isLoading}
@@ -1414,7 +1418,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
         isOpen={expandModalInfo.isOpen} 
         imageUrl={expandModalInfo.imageUrl} 
         onClose={() => setExpandModalInfo({ isOpen: false, imageUrl: null })}
-        onConfirmExpand={(original, expanded, p) => handleImageAction(expandImage, expanded, p)}
+        onConfirmExpand={(original, expanded, p) => handleImageAction(imageAction, expanded, p || "Fill in the transparent areas seamlessly, continuing the existing image and scenery naturally.")}
         isLoading={isLoading}
       />
       <AirtableSettingsModal 

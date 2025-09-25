@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { GeneratorMode } from '../constants';
 
@@ -104,6 +105,12 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
     "Select the right platform! The AI tailors the post length and style for Twitter/X, LinkedIn, or Instagram.",
     "Click 'Generate Image' on a post to create a perfectly matched visual for it!",
     "Don't like the first few options? Just click 'Generate Posts' again for a fresh batch of ideas.",
+  ],
+  // FIX: Added missing 'wall-art-mockup' mode tips to resolve TypeScript error.
+  'wall-art-mockup': [
+    "Upload a high-quality image of your art for the best results.",
+    "Try different room styles to see how your art looks in various settings.",
+    "This tool helps you visualize how your art will look on a real wall.",
   ],
 };
 
