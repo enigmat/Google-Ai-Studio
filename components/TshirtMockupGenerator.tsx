@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { TSHIRT_MOCKUPS } from '../constants';
 
@@ -8,7 +9,7 @@ interface TshirtMockupGeneratorProps {
 
 const TshirtMockupGenerator: React.FC<TshirtMockupGeneratorProps> = ({ onSubmit, isLoading }) => {
   const [designImageUrl, setDesignImageUrl] = useState<string | null>(null);
-  const [selectedMockupUrl, setSelectedMockupUrl] = useState<string | null>(TSHIRT_MOCKUPS[0].url);
+  const [selectedMockupUrl, setSelectedMockupUrl] = useState<string>(TSHIRT_MOCKUPS[0].url);
   const [error, setError] = useState<string | null>(null);
 
   const handleFileChange = (files: FileList | null) => {
@@ -46,7 +47,7 @@ const TshirtMockupGenerator: React.FC<TshirtMockupGeneratorProps> = ({ onSubmit,
       return;
     }
     if (!selectedMockupUrl) {
-      setError('Please select a T-shirt mockup.');
+      setError('Please select a T-shirt color.');
       return;
     }
     setError(null);
@@ -55,6 +56,17 @@ const TshirtMockupGenerator: React.FC<TshirtMockupGeneratorProps> = ({ onSubmit,
   
   const checkerboardBg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none'%3E%3Crect width='8' height='8' fill='%23374151'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%23374151'/%3E%3Crect width='8' height='8' x='8' fill='%231F2937'/%3E%3Crect y='8' width='8' height='8' fill='%231F2937'/%3E%3C/svg%3E")`;
 
+  const previewStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -65%)',
+    width: '30%',
+    height: 'auto',
+    objectFit: 'contain',
+    pointerEvents: 'none',
+    transition: 'all 0.2s ease-in-out'
+  };
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -88,27 +100,17 @@ const TshirtMockupGenerator: React.FC<TshirtMockupGeneratorProps> = ({ onSubmit,
         <div>
             <label className="block text-sm font-semibold text-gray-400 mb-2">2. Preview your mockup</label>
             <div className="relative aspect-square w-full bg-gray-900 border-2 border-gray-700 rounded-lg flex items-center justify-center overflow-hidden">
-                {selectedMockupUrl && (
-                    <img src={selectedMockupUrl} alt="Selected T-shirt mockup" className="w-full h-full object-contain" />
-                )}
-                {selectedMockupUrl && designImageUrl && (
+                <img src={selectedMockupUrl} alt="Selected mockup" className="w-full h-full object-contain" />
+                {designImageUrl && (
                     <img 
                         src={designImageUrl} 
                         alt="Design overlay" 
-                        className="absolute h-auto object-contain pointer-events-none transition-all"
-                        style={{
-                            top: '50%',
-                            left: '50%',
-                            transform: 'translate(-50%, -65%)',
-                            width: '30%'
-                        }}
+                        style={previewStyle}
                     />
-                )}
-                 {!selectedMockupUrl && (
-                    <p className="text-gray-500">Select a T-shirt below to see a preview</p>
                 )}
             </div>
         </div>
+        
         <div>
             <label className="block text-sm font-semibold text-gray-400 mb-2">3. Choose a T-shirt color</label>
             <div className="grid grid-cols-3 gap-4">
@@ -127,6 +129,7 @@ const TshirtMockupGenerator: React.FC<TshirtMockupGeneratorProps> = ({ onSubmit,
                 ))}
             </div>
         </div>
+
         {error && <p className="text-red-400 text-sm">{error}</p>}
         <button
             type="submit"

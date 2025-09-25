@@ -1,6 +1,5 @@
 
 
-
 import React, { useState, useEffect, useRef } from 'react';
 import { GeneratorMode } from '../constants';
 
@@ -54,7 +53,7 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
   ],
   'thumbnail-generator': [
     "A strong, clear title is key for a good thumbnail.",
-    "Use contrasting colors to make your text pop!",
+    "Use a contrasting color to make your text pop!",
     "Think about what would make you click on the video. Be bold!",
   ],
   'recreate-thumbnail': [
@@ -92,9 +91,9 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
     "Try different scene prompts to see your product in various settings!",
   ],
   'tshirt-mockup': [
-    "For best results, upload a design with a transparent background (like a .PNG file).",
-    "The AI will automatically adjust your design to the wrinkles and lighting of the shirt.",
-    "Try your design on different colored shirts to see what looks best!",
+    "For best results, upload a design with a transparent background (PNG).",
+    "The AI will automatically adjust your design to fit the perspective and lighting of the T-shirt.",
+    "Try different shirt colors to see what looks best with your design!",
   ],
   'blog-post': [
     "Be specific with your topic for a more focused article.",
@@ -106,11 +105,10 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
     "Click 'Generate Image' on a post to create a perfectly matched visual for it!",
     "Don't like the first few options? Just click 'Generate Posts' again for a fresh batch of ideas.",
   ],
-  // FIX: Added missing 'wall-art-mockup' mode tips to resolve TypeScript error.
-  'wall-art-mockup': [
-    "Upload a high-quality image of your art for the best results.",
-    "Try different room styles to see how your art looks in various settings.",
-    "This tool helps you visualize how your art will look on a real wall.",
+  'title-to-image': [
+    "Think like a movie poster designer! What's the core emotion of your title?",
+    "A good synopsis with strong keywords can dramatically improve the result.",
+    "The AI is told not to add text, so you get a clean piece of art to work with.",
   ],
 };
 

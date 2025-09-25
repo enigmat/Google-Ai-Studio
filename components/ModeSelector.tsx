@@ -49,6 +49,7 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ mode, setMode }) => {
             <ModeButton currentMode={mode} targetMode="logo-generator" setMode={setMode}>Logo</ModeButton>
             <ModeButton currentMode={mode} targetMode="thumbnail-generator" setMode={setMode}>Thumbnail</ModeButton>
             <ModeButton currentMode={mode} targetMode="recreate-thumbnail" setMode={setMode}>Recreate</ModeButton>
+            <ModeButton currentMode={mode} targetMode="title-to-image" setMode={setMode}>Title to Image</ModeButton>
             <ModeButton currentMode={mode} targetMode="product-studio" setMode={setMode}>Product Studio</ModeButton>
             <ModeButton currentMode={mode} targetMode="tshirt-mockup" setMode={setMode}>T-shirt Mockup</ModeButton>
             <ModeButton currentMode={mode} targetMode="ugc-ad" setMode={setMode}>UGC Ad</ModeButton>

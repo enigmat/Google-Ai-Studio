@@ -1,6 +1,4 @@
 
-
-
 import { GoogleGenAI, Modality, Type, GenerateContentResponse } from "@google/genai";
 
 // The AI client is initialized lazily to avoid crashing the app if the API key is missing.
@@ -338,11 +336,12 @@ export const generateUgcProductAd = (productImageUrl: string, productName: strin
 };
 export const generateProductScene = (productUrl: string, scenePrompt: string): Promise<string> => imageAction(productUrl, `Place this product with a transparent background realistically into the following scene: ${scenePrompt}. Ensure lighting and shadows on the product match the new background.`);
 export const generateMockup = async (designUrl: string, mockupUrl: string): Promise<string> => {
+    const prompt = 'Apply the second image (the design) onto the first image (the t-shirt). The design should conform realistically to the fabric, including wrinkles and lighting.';
     const { base64Data: designData, mimeType: designMime } = parseDataUrl(designUrl);
     const { base64Data: mockupData, mimeType: mockupMime } = parseDataUrl(mockupUrl);
     return processImageEditingResponse(await getAiClient().models.generateContent({
         model: 'gemini-2.5-flash-image-preview',
-        contents: { parts: [{ inlineData: { data: mockupData, mimeType: mockupMime } }, { inlineData: { data: designData, mimeType: designMime } }, { text: 'Apply the second image (the design) onto the first image (the t-shirt). The design should conform realistically to the fabric, including wrinkles and lighting.' },] },
+        contents: { parts: [{ inlineData: { data: mockupData, mimeType: mockupMime } }, { inlineData: { data: designData, mimeType: designMime } }, { text: prompt },] },
         config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
     }));
 };

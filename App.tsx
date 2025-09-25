@@ -1,6 +1,5 @@
 
 
-
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 // FIX: Added all missing function and type imports from geminiService to resolve compilation errors.
 import { generateImageFromPrompt, enhancePrompt, imageAction, generateImageFromReference, generateVideoFromPrompt, generateVideoFromImage, SocialMediaPost, VideoScene, MusicVideoScene, generateImageMetadata, getPromptInspiration, generatePromptFromImage, generateUgcProductAd, generateProductScene, generateMockup, generateBlogPost, generateSocialMediaPost, generateVideoScriptFromText, generateMusicVideoScript } from './services/geminiService';
@@ -31,7 +30,7 @@ import AIAvatar from './components/AIAvatar';
 import ImageToPromptGenerator from './components/ImageToPromptGenerator';
 import CreativeChat from './components/CreativeChat';
 import ProductStudio from './components/ProductStudio';
-import MockupGenerator from './components/TshirtMockupGenerator';
+import TshirtMockupGenerator from './components/TshirtMockupGenerator';
 import BlogPostGenerator from './components/BlogPostGenerator';
 import BlogPostDisplay from './components/BlogPostDisplay';
 import AvatarGenerator from './components/AvatarGenerator';
@@ -49,6 +48,7 @@ import ThumbnailGenerator from './components/ThumbnailGenerator';
 import RecreateThumbnailGenerator from './components/RecreateThumbnailGenerator';
 import MusicVideoGenerator from './components/MusicVideoGenerator';
 import MusicVideoDisplay from './components/MusicVideoDisplay';
+import TitleToImageGenerator from './components/TitleToImageGenerator';
 // FIX: Removed EbookStudio and EbookDisplay imports as the feature has been disabled.
 // import EbookStudio from './components/EbookStudio';
 // import EbookDisplay from './components/EbookDisplay';
@@ -149,6 +149,7 @@ const App: React.FC = () => {
   const AIRTABLE_CONFIG_KEY = 'airtable-config';
 
   useEffect(() => {
+    // Load saved images
     try {
       const savedImagesJson = localStorage.getItem(STORAGE_KEY);
       if (savedImagesJson) {
@@ -157,12 +158,18 @@ const App: React.FC = () => {
             setSavedImages(parsed);
         }
       }
+    } catch (err) {
+      console.error("Failed to load saved images from local storage:", err);
+    }
+
+    // Load airtable config
+    try {
       const airtableConfigJson = localStorage.getItem(AIRTABLE_CONFIG_KEY);
       if (airtableConfigJson) {
           setAirtableConfig(JSON.parse(airtableConfigJson));
       }
     } catch (err) {
-      console.error("Failed to load data from local storage:", err);
+      console.error("Failed to load Airtable config from local storage:", err);
     }
   }, []);
   
@@ -203,8 +210,7 @@ const App: React.FC = () => {
     const isNewModeTextual = ['blog-post', 'social-media-post'].includes(newMode);
     const isNewModeVideo = newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'video-green-screen';
     
-    // FIX: Changed 'mockups' to 'tshirt-mockup' to match GeneratorMode type.
-    if (isNewModeTextual || isNewModeVideo || ['product-studio', 'tshirt-mockup', 'avatar-generator', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'music-video'].includes(newMode)) {
+    if (isNewModeTextual || isNewModeVideo || ['product-studio', 'tshirt-mockup', 'avatar-generator', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'music-video', 'title-to-image'].includes(newMode)) {
       setImageUrls(null);
       setGeneratedImagesData([]);
     }
@@ -224,10 +230,10 @@ const App: React.FC = () => {
       setMusicVideoStoryboard(null);
     }
 
-    if (newMode === 'avatar-generator' || newMode === 'flyer-generator') {
+    if (newMode === 'avatar-generator' || newMode === 'flyer-generator' || newMode === 'title-to-image') {
       setAspectRatio('9:16');
     }
-    if (newMode === 'logo-generator') {
+    if (newMode === 'logo-generator' || newMode === 'tshirt-mockup') {
         setAspectRatio('1:1');
     }
     if (newMode === 'thumbnail-generator' || newMode === 'recreate-thumbnail') {
@@ -405,11 +411,11 @@ const App: React.FC = () => {
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
 
-    const mockupPrompt = `T-shirt mockup with user-provided design.`;
+    const metadataPrompt = `T-shirt mockup with user-provided design.`;
 
     try {
         const resultUrl = await generateMockup(designUrl, mockupUrl);
-        handleSuccessfulGeneration([resultUrl], mockupPrompt);
+        handleSuccessfulGeneration([resultUrl], metadataPrompt);
     } catch (e: unknown) {
         const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
         setError(`Failed to generate mockup: ${message}`);
@@ -959,6 +965,35 @@ ${info ? `- Additional Info: "${info}"` : ''}
         }
     }, [handleSuccessfulGeneration]);
 
+  const handleGenerateImageFromTitle = useCallback(async (title: string, synopsis: string) => {
+    setIsLoading(true);
+    setError(null);
+    setImageUrls(null);
+    setGeneratedImagesData([]);
+    setFinalVideoUrl(null);
+    setPreviewVideoUrl(null);
+    setBlogPostContent(null);
+    setSocialMediaPosts(null);
+    setGroundingSources(null);
+    setInspirationPrompts([]);
+    setVideoStoryboard(null);
+    setMusicVideoStoryboard(null);
+
+    const fullPrompt = `Create a visually stunning, high-impact image for a project titled "${title}". ${synopsis ? `The image should capture the essence of the following description: "${synopsis}".` : ''} Do NOT include any text, letters, or words in the image. Focus on creating a powerful piece of artwork that could be used as a book cover, movie poster, or album art. Style: Cinematic, dramatic lighting, epic, detailed.`;
+    const negativePrompt = 'text, letters, words, font, signature, watermark, blurry text, unreadable fonts';
+
+    try {
+        const generatedImageUrls = await generateImageFromPrompt(fullPrompt, 1, '9:16', negativePrompt);
+        handleSuccessfulGeneration(generatedImageUrls, fullPrompt);
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+        setError(`Failed to generate image from title: ${message}`);
+    } finally {
+        setIsLoading(false);
+        setPromptBeforeEnhance(null);
+    }
+  }, [handleSuccessfulGeneration]);
+  
   const handleGenerateExplainerVideo = useCallback(async (textContent: string) => {
       setIsLoading(true);
       setError(null);
@@ -1040,10 +1075,16 @@ ${info ? `- Additional Info: "${info}"` : ''}
   }, [airtableConfig]);
 
   const handleAirtableConfigSave = (config: AirtableConfig) => {
-    setAirtableConfig(config);
-    localStorage.setItem(AIRTABLE_CONFIG_KEY, JSON.stringify(config));
-    setIsSettingsModalOpen(false);
-    showToast('Airtable settings saved!', 'success');
+    try {
+      localStorage.setItem(AIRTABLE_CONFIG_KEY, JSON.stringify(config));
+      setAirtableConfig(config);
+      setIsSettingsModalOpen(false);
+      showToast('Airtable settings saved!', 'success');
+    } catch (error) {
+      console.error("Failed to save Airtable config to local storage:", error);
+      const message = error instanceof Error ? error.message : "An unknown error occurred.";
+      showToast(`Could not save settings. Your browser's storage might be full or blocked. Error: ${message}`, 'error', 5000);
+    }
   };
 
   const handleDeleteImage = (id: string) => {
@@ -1097,8 +1138,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
   }, []);
 
   const isAnyLoading = isLoading || isPreviewLoading || isEnhancing || isInspiring || isFetchingFromAirtable;
-  // FIX: Changed 'mockups' to 'tshirt-mockup' to match GeneratorMode type.
-  const isImageDisplayMode = ['text-to-image', 'image-variations', 'ugc-ad', 'product-studio', 'tshirt-mockup', 'avatar-generator', 'creative-chat', 'image-to-prompt', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail'].includes(mode);
+  const isImageDisplayMode = ['text-to-image', 'image-variations', 'ugc-ad', 'product-studio', 'tshirt-mockup', 'avatar-generator', 'creative-chat', 'image-to-prompt', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'title-to-image'].includes(mode);
   const isVideoDisplayMode = ['text-to-video', 'animate-image', 'video-green-screen'].includes(mode);
   const isTextDisplayMode = ['blog-post', 'social-media-post'].includes(mode);
   const isMusicVideoDisplayMode = mode === 'music-video';
@@ -1204,6 +1244,13 @@ ${info ? `- Additional Info: "${info}"` : ''}
                   <LogoGenerator onSubmit={handleGenerateLogo} isLoading={isLoading} />
                 </>
             )}
+            
+            {mode === 'title-to-image' && (
+              <>
+                <h2 className="text-xl font-bold text-indigo-400">Title to Image Generator</h2>
+                <TitleToImageGenerator onSubmit={handleGenerateImageFromTitle} isLoading={isLoading} />
+              </>
+            )}
 
             {mode === 'thumbnail-generator' && (
                 <>
@@ -1262,8 +1309,8 @@ ${info ? `- Additional Info: "${info}"` : ''}
 
             {mode === 'tshirt-mockup' && (
               <>
-                <h2 className="text-xl font-bold text-indigo-400">Mockup Generator</h2>
-                <MockupGenerator onSubmit={handleGenerateMockup} isLoading={isLoading} />
+                <h2 className="text-xl font-bold text-indigo-400">T-Shirt Mockup Generator</h2>
+                <TshirtMockupGenerator onSubmit={handleGenerateMockup} isLoading={isLoading} />
               </>
             )}
             
