@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, Modality, Type, GenerateContentResponse } from "@google/genai";
 
 // The AI client is initialized lazily to avoid crashing the app if the API key is missing.
@@ -362,6 +363,33 @@ export const generatePromptFromImage = async (imageUrl: string): Promise<string>
     const { base64Data, mimeType } = parseDataUrl(imageUrl);
     return (await getAiClient().models.generateContent({ model: 'gemini-2.5-flash', contents: { parts: [{ inlineData: { data: base64Data, mimeType } }, { text: 'Describe this image in detail to create a prompt for an AI image generator. Include details about the subject, setting, style, lighting, and composition.' }] } })).text;
 };
+
+export const generateBlogTopicIdeas = async (category: string): Promise<string[]> => {
+    const aiClient = getAiClient();
+    try {
+        const response = await aiClient.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Generate 5 interesting and engaging blog post topic ideas for the category: ${category}.`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.STRING
+                    }
+                }
+            }
+        });
+        return JSON.parse(response.text);
+    } catch (error) {
+        console.error("Error generating blog topic ideas with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while generating blog topic ideas.");
+    }
+};
+
 export const generateBlogPost = async (topic: string, tone: string, length: string, audience: string): Promise<string> => {
     const audienceText = audience.trim() ? ` for an audience of ${audience.trim()}` : '';
     return (await getAiClient().models.generateContent({ model: 'gemini-2.5-flash', contents: `Write a blog post about "${topic}". The tone should be ${tone}, the length should be approximately ${length}, and it should be written${audienceText}. The output must be formatted in clean HTML, including h1, h2, p, and ul/li tags. Do not include <!DOCTYPE>, <html>, <head>, or <body> tags. Start directly with the <h1> title tag.` })).text;
