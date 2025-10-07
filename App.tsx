@@ -1,8 +1,6 @@
-
-
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 // FIX: Added all missing function and type imports from geminiService to resolve compilation errors.
-import { generateImageFromPrompt, enhancePrompt, imageAction, generateImageFromReference, generateVideoFromPrompt, generateVideoFromImage, SocialMediaPost, VideoScene, MusicVideoScene, generateImageMetadata, getPromptInspiration, generatePromptFromImage, generateUgcProductAd, generateProductScene, generateMockup, generateBlogPost, generateSocialMediaPost, generateVideoScriptFromText, generateMusicVideoScript } from './services/geminiService';
+import { generateImageFromPrompt, enhancePrompt, imageAction, generateImageFromReference, generateVideoFromPrompt, generateVideoFromImage, SocialMediaPost, VideoScene, MusicVideoScene, generateImageMetadata, getPromptInspiration, generatePromptFromImage, generateUgcProductAd, generateProductScene, generateMockup, generateBlogPost, generateSocialMediaPost, generateVideoScriptFromText, generateMusicVideoScript, generateLyricsStoryboard, LyricsScene } from './services/geminiService';
 import { saveImageToAirtable, AirtableConfig, getRandomPromptFromAirtable, getPromptsFromAirtable, updateAirtableRecord } from './services/airtableService';
 import Header from './components/Header';
 import PromptInput from './components/PromptInput';
@@ -49,6 +47,10 @@ import RecreateThumbnailGenerator from './components/RecreateThumbnailGenerator'
 import MusicVideoGenerator from './components/MusicVideoGenerator';
 import MusicVideoDisplay from './components/MusicVideoDisplay';
 import TitleToImageGenerator from './components/TitleToImageGenerator';
+import LyricsToVideoGenerator from './components/LyricsToVideoGenerator';
+import LyricsVideoDisplay, { StoryboardLyricsScene } from './components/LyricsVideoDisplay';
+import AudioToTextGenerator from './components/AudioToTextGenerator';
+import AudioTranscriptionDisplay from './components/AudioTranscriptionDisplay';
 // FIX: Removed EbookStudio and EbookDisplay imports as the feature has been disabled.
 // import EbookStudio from './components/EbookStudio';
 // import EbookDisplay from './components/EbookDisplay';
@@ -121,6 +123,14 @@ const App: React.FC = () => {
   const [explainerVideoProgress, setExplainerVideoProgress] = useState<string>('');
   // Music video state
   const [musicVideoStoryboard, setMusicVideoStoryboard] = useState<MusicVideoScene[] | null>(null);
+  // Lyrics to video state
+  const [lyricsVideoStoryboard, setLyricsVideoStoryboard] = useState<StoryboardLyricsScene[] | null>(null);
+  const [lyricsVideoProgress, setLyricsVideoProgress] = useState<string>('');
+  // Audio to text state
+  const [finalTranscription, setFinalTranscription] = useState('');
+  const [interimTranscription, setInterimTranscription] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const interimTranscriptionRef = useRef('');
   // Airtable state
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isPromptLibraryOpen, setIsPromptLibraryOpen] = useState(false);
@@ -190,8 +200,15 @@ const App: React.FC = () => {
           }
         });
       }
+      if (lyricsVideoStoryboard) {
+        lyricsVideoStoryboard.forEach(scene => {
+          if (scene.videoUrl && scene.videoUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(scene.videoUrl);
+          }
+        });
+      }
     };
-  }, [previewVideoUrl, finalVideoUrl, videoStoryboard]);
+  }, [previewVideoUrl, finalVideoUrl, videoStoryboard, lyricsVideoStoryboard]);
 
   const saveConfirmationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
@@ -208,9 +225,9 @@ const App: React.FC = () => {
   
   const handleSetMode = (newMode: GeneratorMode) => {
     const isNewModeTextual = ['blog-post', 'social-media-post'].includes(newMode);
-    const isNewModeVideo = newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'video-green-screen';
+    const isNewModeVideo = newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'video-green-screen' || newMode === 'lyrics-to-video';
     
-    if (isNewModeTextual || isNewModeVideo || ['product-studio', 'tshirt-mockup', 'avatar-generator', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'music-video', 'title-to-image'].includes(newMode)) {
+    if (isNewModeTextual || isNewModeVideo || ['product-studio', 'tshirt-mockup', 'avatar-generator', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'music-video', 'title-to-image', 'audio-to-text'].includes(newMode)) {
       setImageUrls(null);
       setGeneratedImagesData([]);
     }
@@ -226,8 +243,17 @@ const App: React.FC = () => {
       setVideoStoryboard(null);
       setExplainerVideoProgress('');
     }
+     if (newMode !== 'lyrics-to-video') {
+      setLyricsVideoStoryboard(null);
+      setLyricsVideoProgress('');
+    }
     if (newMode !== 'music-video') {
       setMusicVideoStoryboard(null);
+    }
+     if (newMode !== 'audio-to-text') {
+      setFinalTranscription('');
+      setInterimTranscription('');
+      setIsRecording(false);
     }
 
     if (newMode === 'avatar-generator' || newMode === 'flyer-generator' || newMode === 'title-to-image') {
@@ -236,7 +262,7 @@ const App: React.FC = () => {
     if (newMode === 'logo-generator' || newMode === 'tshirt-mockup') {
         setAspectRatio('1:1');
     }
-    if (newMode === 'thumbnail-generator' || newMode === 'recreate-thumbnail') {
+    if (newMode === 'thumbnail-generator' || newMode === 'recreate-thumbnail' || newMode === 'lyrics-to-video') {
         setAspectRatio('16:9');
     }
     if (newMode !== 'animate-image') {
@@ -310,6 +336,7 @@ const App: React.FC = () => {
     setInspirationPrompts([]);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
+    setLyricsVideoStoryboard(null);
 
     const style = STYLES.find(s => s.name === selectedStyle);
     const finalPrompt = style && style.promptSuffix ? `${prompt.trim()}${style.promptSuffix}` : prompt.trim();
@@ -350,6 +377,7 @@ const App: React.FC = () => {
     setInspirationPrompts([]);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
+    setLyricsVideoStoryboard(null);
 
     try {
       let generatedImageUrls: string[];
@@ -383,6 +411,7 @@ const App: React.FC = () => {
     setSocialMediaPosts(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
+    setLyricsVideoStoryboard(null);
     
     const adPrompt = `UGC ad for ${productName}: ${productDescription}`;
     
@@ -410,6 +439,7 @@ const App: React.FC = () => {
     setSocialMediaPosts(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
+    setLyricsVideoStoryboard(null);
 
     const metadataPrompt = `T-shirt mockup with user-provided design.`;
 
@@ -443,6 +473,7 @@ const App: React.FC = () => {
     setSocialMediaPosts(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
+    setLyricsVideoStoryboard(null);
 
     if (isPreview) {
       setPreviewVideoUrl(null);
@@ -484,6 +515,7 @@ const App: React.FC = () => {
     setSocialMediaPosts(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
+    setLyricsVideoStoryboard(null);
 
     if (isPreview) {
         setPreviewVideoUrl(null);
@@ -630,6 +662,7 @@ const App: React.FC = () => {
       setAirtableRecord(null); // Image actions create new content, so clear the prompt context
       setVideoStoryboard(null);
       setMusicVideoStoryboard(null);
+      setLyricsVideoStoryboard(null);
 
       try {
           const resultImageUrl = await action(...args);
@@ -659,6 +692,7 @@ const App: React.FC = () => {
     setAirtableRecord(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
+    setLyricsVideoStoryboard(null);
 
     try {
       const generatedPrompt = await generatePromptFromImage(imageUrl);
@@ -714,6 +748,7 @@ const App: React.FC = () => {
     setPreviewVideoUrl(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
+    setLyricsVideoStoryboard(null);
     
     try {
       const content = await generateBlogPost(topic, tone, length, audience);
@@ -739,6 +774,7 @@ const App: React.FC = () => {
     setPreviewVideoUrl(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
+    setLyricsVideoStoryboard(null);
     
     try {
       const posts = await generateSocialMediaPost(topic, platform, tone, audience, includeHashtags, includeEmojis);
@@ -813,6 +849,7 @@ const App: React.FC = () => {
       setInspirationPrompts([]);
       setVideoStoryboard(null);
       setMusicVideoStoryboard(null);
+      setLyricsVideoStoryboard(null);
 
       const styleDetails = {
           'Modern & Clean': 'minimalist design, sans-serif fonts, generous white space, clean lines',
@@ -856,6 +893,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
         setInspirationPrompts([]);
         setVideoStoryboard(null);
         setMusicVideoStoryboard(null);
+        setLyricsVideoStoryboard(null);
 
         const fullPrompt = `Professional logo design for a company named "${companyName}". Style: ${style}. The logo must feature a vector icon representing: "${iconDesc}". ${colors ? `Primary color palette: ${colors}.` : ''} ${slogan ? `If possible, elegantly incorporate the slogan "${slogan}".` : ''} The design must be simple, clean, and memorable, suitable for use on a website and business cards. Solid white background.`;
 
@@ -884,6 +922,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
         setInspirationPrompts([]);
         setVideoStoryboard(null);
         setMusicVideoStoryboard(null);
+        setLyricsVideoStoryboard(null);
 
         const selectedStyleObject = THUMBNAIL_STYLES.find(s => s.name === style);
         const styleDetails = selectedStyleObject ? selectedStyleObject.promptSuffix : '';
@@ -936,6 +975,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
         setInspirationPrompts([]);
         setVideoStoryboard(null);
         setMusicVideoStoryboard(null);
+        setLyricsVideoStoryboard(null);
 
         let recreationPrompt: string;
         switch (weight) {
@@ -978,6 +1018,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
     setInspirationPrompts([]);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
+    setLyricsVideoStoryboard(null);
 
     const fullPrompt = `Create a visually stunning, high-impact image for a project titled "${title}". ${synopsis ? `The image should capture the essence of the following description: "${synopsis}".` : ''} Do NOT include any text, letters, or words in the image. Focus on creating a powerful piece of artwork that could be used as a book cover, movie poster, or album art. Style: Cinematic, dramatic lighting, epic, detailed.`;
     const negativePrompt = 'text, letters, words, font, signature, watermark, blurry text, unreadable fonts';
@@ -1042,6 +1083,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
     setVideoStoryboard(null);
     setBlogPostContent(null);
     setSocialMediaPosts(null);
+    setLyricsVideoStoryboard(null);
     
     try {
       const script = await generateMusicVideoScript(songDescription, artistGender, songLength);
@@ -1053,6 +1095,73 @@ ${info ? `- Additional Info: "${info}"` : ''}
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  const handleGenerateLyricsVideo = useCallback(async (lyrics: string) => {
+      setIsLoading(true);
+      setError(null);
+      setLyricsVideoStoryboard(null);
+      setLyricsVideoProgress("Step 1/3: Reading lyrics and creating storyboard...");
+
+      try {
+          // Step 1: Generate script
+          const { scenes: scriptData } = await generateLyricsStoryboard(lyrics);
+          
+          const initialStoryboard: StoryboardLyricsScene[] = scriptData.map(scene => ({
+              ...scene,
+              isImageLoading: true,
+              isVideoLoading: false,
+          }));
+          setLyricsVideoStoryboard(initialStoryboard);
+          
+          // Step 2 & 3: Generate images and videos for each scene
+          for (let i = 0; i < initialStoryboard.length; i++) {
+              // Generate Image
+              setLyricsVideoProgress(`Step 2/3: Generating image for scene ${i + 1} of ${initialStoryboard.length}...`);
+              
+              const imageUrls = await generateImageFromPrompt(initialStoryboard[i].visualPrompt, 1, '16:9', 'text, letters, words');
+              const imageUrl = imageUrls[0];
+
+              setLyricsVideoStoryboard(currentStoryboard => {
+                  if (!currentStoryboard) return null;
+                  const newStoryboard = [...currentStoryboard];
+                  newStoryboard[i] = { ...newStoryboard[i], imageUrl, isImageLoading: false, isVideoLoading: true };
+                  return newStoryboard;
+              });
+
+              // Generate Video
+              setLyricsVideoProgress(`Step 3/3: Animating scene ${i + 1} of ${initialStoryboard.length}...`);
+              // Using a short duration and preview for speed and cost-effectiveness
+              const videoUrl = await generateVideoFromImage(imageUrl, initialStoryboard[i].motionPrompt, 2, true); 
+              
+              setLyricsVideoStoryboard(currentStoryboard => {
+                  if (!currentStoryboard) return null;
+                  const newStoryboard = [...currentStoryboard];
+                  newStoryboard[i] = { ...newStoryboard[i], videoUrl, isVideoLoading: false };
+                  return newStoryboard;
+              });
+          }
+          setLyricsVideoProgress("Your Lyrics Video storyboard is complete!");
+      } catch (e) {
+          const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+          setError(`Failed to generate lyrics video: ${message}`);
+          setLyricsVideoProgress('');
+      } finally {
+          setIsLoading(false);
+      }
+  }, []);
+
+  const handleTranscriptionUpdate = useCallback((chunk: string, isTurnComplete: boolean) => {
+      if (isTurnComplete) {
+          const fullUtterance = interimTranscriptionRef.current + chunk;
+          setFinalTranscription(prev => prev + fullUtterance.trim() + '\n');
+          interimTranscriptionRef.current = '';
+          setInterimTranscription('');
+      } else {
+          // The API sends the full interim result for the current utterance.
+          interimTranscriptionRef.current = chunk;
+          setInterimTranscription(chunk);
+      }
   }, []);
 
   const handleSaveToAirtable = useCallback(async (image: SavedImage) => {
@@ -1142,6 +1251,8 @@ ${info ? `- Additional Info: "${info}"` : ''}
   const isVideoDisplayMode = ['text-to-video', 'animate-image', 'video-green-screen'].includes(mode);
   const isTextDisplayMode = ['blog-post', 'social-media-post'].includes(mode);
   const isMusicVideoDisplayMode = mode === 'music-video';
+  const isLyricsVideoDisplayMode = mode === 'lyrics-to-video';
+  const isAudioDisplayMode = mode === 'audio-to-text';
 
   return (
     <div className="bg-gray-900 text-white min-h-screen flex flex-col items-center font-sans">
@@ -1370,10 +1481,30 @@ ${info ? `- Additional Info: "${info}"` : ''}
               </>
             )}
 
+            {mode === 'lyrics-to-video' && (
+              <>
+                <h2 className="text-xl font-bold text-indigo-400">Lyrics to Video Generator</h2>
+                <LyricsToVideoGenerator onSubmit={handleGenerateLyricsVideo} isLoading={isLoading} />
+              </>
+            )}
+
             {mode === 'music-video' && (
               <>
                 <h2 className="text-xl font-bold text-indigo-400">Music Video Script Generator</h2>
                 <MusicVideoGenerator onSubmit={handleGenerateMusicVideo} isLoading={isLoading} />
+              </>
+            )}
+            
+            {mode === 'audio-to-text' && (
+              <>
+                <h2 className="text-xl font-bold text-indigo-400">Audio-to-Text Transcription</h2>
+                <AudioToTextGenerator
+                  onTranscriptionUpdate={handleTranscriptionUpdate}
+                  onRecordingStateChange={setIsRecording}
+                  setError={setError}
+                  isFileProcessing={isLoading}
+                  setIsFileProcessing={setIsLoading}
+                />
               </>
             )}
             {/* FIX: The 'ebook' mode section has been removed as the feature is disabled. */}
@@ -1421,6 +1552,16 @@ ${info ? `- Additional Info: "${info}"` : ''}
             )}
             {isMusicVideoDisplayMode && (
               <MusicVideoDisplay storyboard={musicVideoStoryboard} isLoading={isLoading} />
+            )}
+            {isLyricsVideoDisplayMode && (
+              <LyricsVideoDisplay storyboard={lyricsVideoStoryboard} isLoading={isLoading} progressMessage={lyricsVideoProgress} />
+            )}
+             {isAudioDisplayMode && (
+              <AudioTranscriptionDisplay
+                finalText={finalTranscription}
+                interimText={interimTranscription}
+                isRecording={isRecording}
+              />
             )}
           </div>
         </div>

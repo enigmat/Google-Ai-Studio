@@ -1,6 +1,4 @@
-
-
-import { GoogleGenAI, Modality, Type, GenerateContentResponse } from "@google/genai";
+import { GoogleGenAI, Modality, Type, GenerateContentResponse, LiveServerMessage, Blob, CloseEvent, ErrorEvent } from "@google/genai";
 
 // The AI client is initialized lazily to avoid crashing the app if the API key is missing.
 let ai: GoogleGenAI | null = null;
@@ -49,6 +47,12 @@ export interface MusicVideoScene {
     cameraShot: string;
     action: string;
     visualDescription:string;
+}
+
+export interface LyricsScene {
+  lyric: string;
+  visualPrompt: string;
+  motionPrompt: string;
 }
 
 const ENHANCER_SYSTEM_INSTRUCTION = `You will take on the role as the ultimate prompt enhancer for prompts that create AI images for tools like Midjourney, Leonardo AI, DALL-E, and Stable Diffusion. You are a prompt engineering expert that can take the simplest prompts and 10X them to masterful, highly detailed levels that only you could craft.
@@ -420,4 +424,133 @@ export const generateMusicVideoScript = async (songDescription: string, artistGe
         config: { responseMimeType: "application/json", responseSchema: { type: Type.OBJECT, properties: { scenes: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { sceneNumber: { type: Type.INTEGER }, timestamp: { type: Type.STRING }, cameraShot: { type: Type.STRING }, action: { type: Type.STRING }, visualDescription: { type: Type.STRING } } } } } } },
     });
     return JSON.parse(response.text);
+};
+export const generateLyricsStoryboard = async (lyrics: string): Promise<{ scenes: LyricsScene[] }> => {
+    const response = await getAiClient().models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Analyze the following song lyrics and break them down into 4-6 visually distinct scenes for a music video. For each scene, provide:
+        1. 'lyric': The key lyric line(s) for that scene (keep it short).
+        2. 'visualPrompt': A detailed, rich, and creative prompt for an AI image generator to create the scene's main visual.
+        3. 'motionPrompt': A simple, brief description of motion for the video (e.g., 'slow zoom in', 'camera pans left', 'subtle shimmering effect').
+        
+        Lyrics: "${lyrics}"`,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    scenes: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                lyric: { type: Type.STRING },
+                                visualPrompt: { type: Type.STRING },
+                                motionPrompt: { type: Type.STRING }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+    });
+    return JSON.parse(response.text);
+};
+
+// --- Audio Transcription Service ---
+
+/**
+ * Converts a File object to a GoogleGenerativeAI.Part object for the API.
+ * @param file The audio or video file to convert.
+ * @returns A promise that resolves with the Part object.
+ */
+const fileToGenerativePart = async (file: File) => {
+  const base64EncodedDataPromise = new Promise<string>((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+    reader.readAsDataURL(file);
+  });
+  return {
+    inlineData: {
+      data: await base64EncodedDataPromise,
+      mimeType: file.type,
+    },
+  };
+};
+
+export const transcribeAudioFromFile = async (audioFile: File): Promise<string> => {
+  const aiClient = getAiClient();
+  try {
+    const audioPart = await fileToGenerativePart(audioFile);
+    const response = await aiClient.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: {
+        parts: [
+          { text: "Transcribe this audio recording." },
+          audioPart
+        ]
+      }
+    });
+    return response.text;
+  } catch (error) {
+    console.error("Error transcribing audio file with Gemini API:", error);
+    if (error instanceof Error) {
+        throw new Error(`Gemini API Error: ${error.message}`);
+    }
+    throw new Error("An unknown error occurred while transcribing the audio file.");
+  }
+};
+
+function encode(bytes: Uint8Array) {
+  let binary = '';
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function createBlob(data: Float32Array): Blob {
+  const l = data.length;
+  const int16 = new Int16Array(l);
+  for (let i = 0; i < l; i++) {
+    int16[i] = data[i] * 32768;
+  }
+  return {
+    data: encode(new Uint8Array(int16.buffer)),
+    mimeType: 'audio/pcm;rate=16000',
+  };
+}
+
+export const startAudioTranscriptionSession = (callbacks: {
+    onTranscriptionUpdate: (chunk: string, isTurnComplete: boolean) => void;
+    onError: (error: Error) => void;
+    onClose: () => void;
+    onOpen: () => void;
+}) => {
+    const aiClient = getAiClient();
+    const sessionPromise = aiClient.live.connect({
+        model: 'gemini-2.5-flash-native-audio-preview-09-2025',
+        callbacks: {
+            onopen: callbacks.onOpen,
+            onmessage: (message: LiveServerMessage) => {
+                // The model might send audio responses even if we only care about transcription.
+                // We don't need to process them here.
+                if (message.serverContent?.inputTranscription) {
+                    callbacks.onTranscriptionUpdate(message.serverContent.inputTranscription.text, false);
+                }
+                if (message.serverContent?.turnComplete) {
+                    callbacks.onTranscriptionUpdate('', true);
+                }
+            },
+            onerror: (e: ErrorEvent) => callbacks.onError(new Error('Audio session error. Please check your connection and try again.')),
+            onclose: (e: CloseEvent) => callbacks.onClose(),
+        },
+        config: {
+            responseModalities: [Modality.AUDIO], // This is required by the API
+            inputAudioTranscription: {},
+            systemInstruction: 'You are a highly accurate and fast transcription service. Only transcribe what the user says. Do not respond or have a conversation.',
+        },
+    });
+    return { sessionPromise, createBlob };
 };

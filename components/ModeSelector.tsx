@@ -1,5 +1,6 @@
 
 
+
 import React from 'react';
 import { GeneratorMode } from '../constants';
 
@@ -62,12 +63,21 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ mode, setMode }) => {
       {/* Category: Video Tools */}
       <div>
         <h3 className="text-sm font-semibold text-gray-500 mb-2 px-1">Video Tools</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1 w-full bg-gray-800 rounded-lg p-1 border border-gray-700">
+        <div className="grid grid-cols-2 sm:grid-cols-6 gap-1 w-full bg-gray-800 rounded-lg p-1 border border-gray-700">
             <ModeButton currentMode={mode} targetMode="text-to-video" setMode={setMode}>Text-to-Video</ModeButton>
             <ModeButton currentMode={mode} targetMode="video-green-screen" setMode={setMode}>Green Screen</ModeButton>
             <ModeButton currentMode={mode} targetMode="animate-image" setMode={setMode}>Animate Image</ModeButton>
             <ModeButton currentMode={mode} targetMode="explainer-video" setMode={setMode}>Explainer Video</ModeButton>
             <ModeButton currentMode={mode} targetMode="music-video" setMode={setMode}>Music Video</ModeButton>
+            <ModeButton currentMode={mode} targetMode="lyrics-to-video" setMode={setMode}>Lyrics to Video</ModeButton>
+        </div>
+      </div>
+      
+      {/* Category: Audio Tools */}
+      <div>
+        <h3 className="text-sm font-semibold text-gray-500 mb-2 px-1">Audio Tools</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 w-full bg-gray-800 rounded-lg p-1 border border-gray-700">
+            <ModeButton currentMode={mode} targetMode="audio-to-text" setMode={setMode}>Audio-to-Text</ModeButton>
         </div>
       </div>
     </div>

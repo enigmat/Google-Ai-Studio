@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { GeneratorMode } from '../constants';
 
@@ -35,6 +36,11 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
     "Describe the song's mood and genre. Is it an upbeat pop track or a moody ballad?",
     "The AI will generate a 5-scene storyboard for a 30-second video.",
     "Use the 'Visuals' description for each scene as a prompt in the Text-to-Video generator to create your clips!",
+  ],
+  'lyrics-to-video': [
+    "I can't listen to MP3s, but I love reading lyrics! Paste them in to get started.",
+    "The AI will break your song into scenes, create an image, and then a short video for each part.",
+    "For best results, use well-formatted lyrics with clear verses and choruses.",
   ],
   'video-green-screen': [
     "Describe the subject or action clearly, like 'a person waving' or 'a cat chasing a laser pointer'.",
@@ -109,6 +115,12 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
     "Think like a movie poster designer! What's the core emotion of your title?",
     "A good synopsis with strong keywords can dramatically improve the result.",
     "The AI is told not to add text, so you get a clean piece of art to work with.",
+  ],
+  // FIX: Added missing 'audio-to-text' mode to satisfy the Record<GeneratorMode, string[]> type.
+  'audio-to-text': [
+    "Click the microphone to start recording. I'll transcribe your speech in real-time.",
+    "For best results, speak clearly and in a quiet environment.",
+    "The transcription will appear on the right. You can copy the full text when you're done.",
   ],
 };
 
