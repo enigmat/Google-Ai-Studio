@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 // FIX: Added all missing function and type imports from geminiService to resolve compilation errors.
-import { generateImageFromPrompt, enhancePrompt, imageAction, generateImageFromReference, generateVideoFromPrompt, generateVideoFromImage, SocialMediaPost, VideoScene, MusicVideoScene, generateImageMetadata, getPromptInspiration, generatePromptFromImage, generateUgcProductAd, generateProductScene, generateMockup, generateBlogPost, generateSocialMediaPost, generateVideoScriptFromText, generateMusicVideoScript, generateLyricsStoryboard, LyricsScene } from './services/geminiService';
+import { generateImageFromPrompt, enhancePrompt, imageAction, generateImageFromReference, generateVideoFromPrompt, generateVideoFromImage, SocialMediaPost, VideoScene, MusicVideoScene, generateImageMetadata, getPromptInspiration, generatePromptFromImage, generateUgcProductAd, generateProductScene, generateMockup, generateBlogPost, generateSocialMediaPost, generateVideoScriptFromText, generateMusicVideoScript, generateLyricsStoryboard, LyricsScene, generateLipSyncVideo, BusinessName, generateBusinessNames, EmailCampaign, generateEmailCampaign } from './services/geminiService';
 import { saveImageToAirtable, AirtableConfig, getRandomPromptFromAirtable, getPromptsFromAirtable, updateAirtableRecord } from './services/airtableService';
 import Header from './components/Header';
 import PromptInput from './components/PromptInput';
@@ -16,7 +16,7 @@ import DownloadModal from './components/DownloadModal';
 import EditModal from './components/EditModal';
 import ExpandModal from './components/ExpandModal';
 import ReferenceImageDisplay from './components/ReferenceImageDisplay';
-import { STYLES, ASPECT_RATIOS, VIDEO_STYLES, GeneratorMode, THUMBNAIL_STYLES } from './constants';
+import { STYLES, ASPECT_RATIOS, VIDEO_STYLES, GeneratorMode, THUMBNAIL_STYLES, BUSINESS_NAME_STYLES, EMAIL_CAMPAIGN_TYPES, BLOG_TONES } from './constants';
 import ModeSelector from './components/ModeSelector';
 import UgcAdGenerator from './components/UgcAdGenerator';
 import VideoGenerator from './components/VideoGenerator';
@@ -51,6 +51,8 @@ import LyricsToVideoGenerator from './components/LyricsToVideoGenerator';
 import LyricsVideoDisplay, { StoryboardLyricsScene } from './components/LyricsVideoDisplay';
 import AudioToTextGenerator from './components/AudioToTextGenerator';
 import AudioTranscriptionDisplay from './components/AudioTranscriptionDisplay';
+import LipSyncGenerator from './components/LipSyncGenerator';
+import Loader from './components/Loader';
 // FIX: Removed EbookStudio and EbookDisplay imports as the feature has been disabled.
 // import EbookStudio from './components/EbookStudio';
 // import EbookDisplay from './components/EbookDisplay';
@@ -60,6 +62,250 @@ type AspectRatio = typeof ASPECT_RATIOS[number];
 type ToastState = { show: boolean; message: string; type: 'success' | 'error' };
 type StoryboardScene = VideoScene & { videoUrl?: string };
 type InspirationWeight = 'Low' | 'Medium' | 'High';
+
+const BusinessNameGenerator: React.FC<{
+  onSubmit: (description: string, keywords: string, style: string) => void;
+  isLoading: boolean;
+}> = ({ onSubmit, isLoading }) => {
+  const [description, setDescription] = useState('');
+  const [keywords, setKeywords] = useState('');
+  const [style, setStyle] = useState(BUSINESS_NAME_STYLES[0]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (description.trim() && !isLoading) {
+      onSubmit(description, keywords, style);
+    }
+  };
+  
+  const commonSelectClasses = "w-full p-3 bg-gray-800 border-2 border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300 disabled:opacity-50";
+  const commonInputClasses = "w-full p-3 bg-gray-800 border-2 border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300";
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div>
+        <label htmlFor="biz-description" className="block text-sm font-semibold text-gray-400 mb-1">
+          Product/Service Description
+        </label>
+        <textarea
+            id="biz-description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="e.g., An online platform that connects local artists with buyers..."
+            className="w-full h-32 p-3 bg-gray-800 border-2 border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300 resize-none"
+            disabled={isLoading}
+            required
+        />
+      </div>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="biz-keywords" className="block text-sm font-semibold text-gray-400 mb-1">
+            Keywords (optional)
+          </label>
+          <input id="biz-keywords" type="text" value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="e.g., art, community, local" className={commonInputClasses} disabled={isLoading} />
+        </div>
+        <div>
+          <label htmlFor="biz-style" className="block text-sm font-semibold text-gray-400 mb-1">
+            Naming Style
+          </label>
+          <select id="biz-style" value={style} onChange={(e) => setStyle(e.target.value)} className={commonSelectClasses} disabled={isLoading}>
+            {BUSINESS_NAME_STYLES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <button
+        type="submit"
+        disabled={isLoading || !description.trim()}
+        className="w-full flex items-center justify-center px-6 py-3 mt-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-indigo-500 disabled:bg-indigo-900 disabled:text-gray-400 disabled:cursor-not-allowed transition-all"
+      >
+        {isLoading ? (
+          <>
+            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Generating...
+          </>
+        ) : (
+          'Generate Names'
+        )}
+      </button>
+    </form>
+  );
+};
+
+const BusinessNameDisplay: React.FC<{
+  names: BusinessName[] | null;
+  isLoading: boolean;
+}> = ({ names, isLoading }) => {
+  const [copiedName, setCopiedName] = useState<string | null>(null);
+
+  const handleCopy = (name: string) => {
+    navigator.clipboard.writeText(name).then(() => {
+      setCopiedName(name);
+      setTimeout(() => setCopiedName(null), 2000);
+    }).catch(err => {
+      console.error('Failed to copy name: ', err);
+    });
+  };
+
+  return (
+    <div className="relative w-full h-full min-h-[500px] bg-gray-800 border-2 border-dashed border-gray-700 rounded-lg flex flex-col p-4 transition-all duration-300">
+      {isLoading ? (
+        <div className="flex-grow flex items-center justify-center">
+          <Loader message="Generating business names..." />
+        </div>
+      ) : names ? (
+        <div className="w-full h-full overflow-y-auto pr-2 space-y-4">
+          {names.map((item, index) => (
+            <div key={index} className="bg-gray-900/50 p-4 rounded-lg border border-gray-700 flex justify-between items-start gap-4">
+                <div className="flex-grow">
+                    <h3 className="text-xl font-bold text-indigo-400">{item.name}</h3>
+                    <p className="text-sm text-gray-400 mt-1">{item.rationale}</p>
+                </div>
+                <button
+                    onClick={() => handleCopy(item.name)}
+                    className="flex-shrink-0 p-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-indigo-500"
+                    title={`Copy "${item.name}"`}
+                >
+                    {copiedName === item.name ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                    ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z" />
+                            <path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z" />
+                        </svg>
+                    )}
+                </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex-grow flex items-center justify-center">
+          <div className="text-center text-gray-500">
+            <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+            </svg>
+            <p className="mt-2 text-lg font-semibold">Your business name ideas will appear here</p>
+            <p className="text-sm">Fill out the details to get started.</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const EmailCampaignGenerator: React.FC<{
+  onSubmit: (productName: string, productDescription: string, audience: string, campaignType: string, tone: string) => void;
+  isLoading: boolean;
+}> = ({ onSubmit, isLoading }) => {
+  const [productName, setProductName] = useState('');
+  const [productDescription, setProductDescription] = useState('');
+  const [audience, setAudience] = useState('');
+  const [campaignType, setCampaignType] = useState(EMAIL_CAMPAIGN_TYPES[0]);
+  const [tone, setTone] = useState(BLOG_TONES[0]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (productName.trim() && productDescription.trim() && !isLoading) {
+      onSubmit(productName, productDescription, audience, campaignType, tone);
+    }
+  };
+  
+  const commonSelectClasses = "w-full p-3 bg-gray-800 border-2 border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300 disabled:opacity-50";
+  const commonInputClasses = "w-full p-3 bg-gray-800 border-2 border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300";
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+       <div>
+        <label htmlFor="email-product-name" className="block text-sm font-semibold text-gray-400 mb-1">Product/Service Name</label>
+        <input id="email-product-name" type="text" value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="e.g., 'Aura Glow Serum'" className={commonInputClasses} disabled={isLoading} required />
+      </div>
+      <div>
+        <label htmlFor="email-product-desc" className="block text-sm font-semibold text-gray-400 mb-1">Product/Service Description</label>
+        <textarea id="email-product-desc" value={productDescription} onChange={(e) => setProductDescription(e.target.value)} placeholder="e.g., A hydrating facial serum with vitamin C and hyaluronic acid..." className={`${commonInputClasses} h-24 resize-none`} disabled={isLoading} required/>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="email-campaign-type" className="block text-sm font-semibold text-gray-400 mb-1">Campaign Type</label>
+          <select id="email-campaign-type" value={campaignType} onChange={(e) => setCampaignType(e.target.value)} className={commonSelectClasses} disabled={isLoading}>
+            {EMAIL_CAMPAIGN_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="email-tone" className="block text-sm font-semibold text-gray-400 mb-1">Tone of Voice</label>
+          <select id="email-tone" value={tone} onChange={(e) => setTone(e.target.value)} className={commonSelectClasses} disabled={isLoading}>
+            {BLOG_TONES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+      </div>
+      <div>
+        <label htmlFor="email-audience" className="block text-sm font-semibold text-gray-400 mb-1">Target Audience (optional)</label>
+        <input id="email-audience" type="text" value={audience} onChange={(e) => setAudience(e.target.value)} placeholder="e.g., Skincare enthusiasts aged 25-40" className={commonInputClasses} disabled={isLoading} />
+      </div>
+      <button type="submit" disabled={isLoading || !productName.trim() || !productDescription.trim()} className="w-full flex items-center justify-center px-6 py-3 mt-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-indigo-500 disabled:bg-indigo-900 disabled:text-gray-400 disabled:cursor-not-allowed transition-all">
+        {isLoading ? 'Generating...' : 'Generate Email Campaign'}
+      </button>
+    </form>
+  );
+};
+
+const EmailCampaignDisplay: React.FC<{
+  campaigns: EmailCampaign[] | null;
+  isLoading: boolean;
+}> = ({ campaigns, isLoading }) => {
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+
+  const handleCopy = (htmlBody: string, index: number) => {
+    navigator.clipboard.writeText(htmlBody).then(() => {
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    }).catch(err => {
+      console.error('Failed to copy HTML: ', err);
+    });
+  };
+
+  return (
+    <div className="relative w-full h-full min-h-[500px] bg-gray-800 border-2 border-dashed border-gray-700 rounded-lg flex flex-col p-4 transition-all duration-300">
+      {isLoading ? (
+        <div className="flex-grow flex items-center justify-center">
+          <Loader message="Building your email campaign..." />
+        </div>
+      ) : campaigns ? (
+        <div className="w-full h-full overflow-y-auto pr-2 space-y-6">
+          {campaigns.map((email, index) => (
+            <div key={index} className="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
+              <div className="mb-4">
+                <p className="text-sm text-gray-400 font-semibold">Subject: <span className="text-gray-200 font-normal">{email.subject}</span></p>
+                <p className="text-sm text-gray-400 font-semibold">Preview: <span className="text-gray-200 font-normal">{email.previewText}</span></p>
+              </div>
+              <div className="p-4 bg-white rounded-md max-h-80 overflow-y-auto">
+                 <div dangerouslySetInnerHTML={{ __html: email.body }} />
+              </div>
+              <div className="flex justify-end mt-3">
+                 <button onClick={() => handleCopy(email.body, index)} className="px-3 py-1 bg-gray-700 text-gray-300 text-xs font-semibold rounded-md hover:bg-gray-600 transition-colors">
+                    {copiedIndex === index ? 'Copied!' : 'Copy HTML'}
+                 </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex-grow flex items-center justify-center">
+          <div className="text-center text-gray-500">
+            <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+            <p className="mt-2 text-lg font-semibold">Your email campaigns will appear here</p>
+            <p className="text-sm">Fill out the details to get started.</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const GroundingSourcesDisplay: React.FC<{ sources: any[] }> = ({ sources }) => (
     <div className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
@@ -118,6 +364,10 @@ const App: React.FC = () => {
   const [blogPostContent, setBlogPostContent] = useState<string | null>(null);
   // Social Media state
   const [socialMediaPosts, setSocialMediaPosts] = useState<SocialMediaPost[] | null>(null);
+  // Business Name state
+  const [businessNames, setBusinessNames] = useState<BusinessName[] | null>(null);
+  // Email Campaign state
+  const [emailCampaigns, setEmailCampaigns] = useState<EmailCampaign[] | null>(null);
   // Explainer video state
   const [videoStoryboard, setVideoStoryboard] = useState<StoryboardScene[] | null>(null);
   const [explainerVideoProgress, setExplainerVideoProgress] = useState<string>('');
@@ -224,10 +474,10 @@ const App: React.FC = () => {
   };
   
   const handleSetMode = (newMode: GeneratorMode) => {
-    const isNewModeTextual = ['blog-post', 'social-media-post'].includes(newMode);
-    const isNewModeVideo = newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'video-green-screen' || newMode === 'lyrics-to-video';
+    const isNewModeTextual = ['blog-post', 'social-media-post', 'email-campaign'].includes(newMode);
+    const isNewModeVideo = newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'video-green-screen' || newMode === 'lyrics-to-video' || newMode === 'lip-sync';
     
-    if (isNewModeTextual || isNewModeVideo || ['product-studio', 'tshirt-mockup', 'avatar-generator', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'music-video', 'title-to-image', 'audio-to-text'].includes(newMode)) {
+    if (isNewModeTextual || isNewModeVideo || ['product-studio', 'tshirt-mockup', 'avatar-generator', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'music-video', 'title-to-image', 'audio-to-text', 'business-name-generator'].includes(newMode)) {
       setImageUrls(null);
       setGeneratedImagesData([]);
     }
@@ -238,6 +488,10 @@ const App: React.FC = () => {
     if (!isNewModeTextual) {
       setBlogPostContent(null);
       setSocialMediaPosts(null);
+      setEmailCampaigns(null);
+    }
+     if (newMode !== 'business-name-generator') {
+        setBusinessNames(null);
     }
     if (newMode !== 'explainer-video') {
       setVideoStoryboard(null);
@@ -262,7 +516,7 @@ const App: React.FC = () => {
     if (newMode === 'logo-generator' || newMode === 'tshirt-mockup') {
         setAspectRatio('1:1');
     }
-    if (newMode === 'thumbnail-generator' || newMode === 'recreate-thumbnail' || newMode === 'lyrics-to-video') {
+    if (newMode === 'thumbnail-generator' || newMode === 'recreate-thumbnail' || newMode === 'lyrics-to-video' || newMode === 'lip-sync') {
         setAspectRatio('16:9');
     }
     if (newMode !== 'animate-image') {
@@ -332,6 +586,8 @@ const App: React.FC = () => {
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
     setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
     setVideoStoryboard(null);
@@ -373,6 +629,8 @@ const App: React.FC = () => {
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
     setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
     setVideoStoryboard(null);
@@ -409,6 +667,8 @@ const App: React.FC = () => {
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
     setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
@@ -437,6 +697,8 @@ const App: React.FC = () => {
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
     setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
@@ -471,6 +733,8 @@ const App: React.FC = () => {
     setGeneratedImagesData([]);
     setBlogPostContent(null);
     setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
@@ -513,6 +777,8 @@ const App: React.FC = () => {
     setGeneratedImagesData([]);
     setBlogPostContent(null);
     setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
@@ -540,6 +806,33 @@ const App: React.FC = () => {
       setLoading(false);
     }
   }, [videoDuration, videoStyle]);
+
+  const handleGenerateLipSyncVideo = useCallback(async (imageUrl: string, audioFile: File) => {
+    setIsLoading(true);
+    setError(null);
+    setImageUrls(null);
+    setGeneratedImagesData([]);
+    setBlogPostContent(null);
+    setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
+    setVideoStoryboard(null);
+    setMusicVideoStoryboard(null);
+    setLyricsVideoStoryboard(null);
+    setFinalVideoUrl(null);
+    setPreviewVideoUrl(null);
+
+    try {
+        const resultUrl = await generateLipSyncVideo(imageUrl, audioFile);
+        setFinalVideoUrl(resultUrl);
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+        setError(`Failed to generate lip sync video: ${message}`);
+        console.error(e);
+    } finally {
+        setIsLoading(false);
+    }
+}, []);
 
   const handleEnhance = useCallback(async (promptToEnhance: string, setPromptFn: (newPrompt: string) => void) => {
     if (!promptToEnhance.trim()) {
@@ -657,6 +950,8 @@ const App: React.FC = () => {
       setPreviewVideoUrl(null);
       setBlogPostContent(null);
       setSocialMediaPosts(null);
+      setBusinessNames(null);
+      setEmailCampaigns(null);
       setEditModalInfo({ isOpen: false, imageUrl: null, mode: 'inpaint' });
       setExpandModalInfo({ isOpen: false, imageUrl: null });
       setAirtableRecord(null); // Image actions create new content, so clear the prompt context
@@ -687,6 +982,8 @@ const App: React.FC = () => {
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
     setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
     setAirtableRecord(null);
@@ -741,6 +1038,8 @@ const App: React.FC = () => {
     setError(null);
     setBlogPostContent(null);
     setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
     // Clear other content types
     setImageUrls(null);
     setGeneratedImagesData([]);
@@ -767,6 +1066,8 @@ const App: React.FC = () => {
     setError(null);
     setBlogPostContent(null);
     setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
     // Clear other content types
     setImageUrls(null);
     setGeneratedImagesData([]);
@@ -788,13 +1089,71 @@ const App: React.FC = () => {
     }
   }, []);
 
+  const handleGenerateBusinessNames = useCallback(async (description: string, keywords: string, style: string) => {
+    setIsLoading(true);
+    setError(null);
+    setBlogPostContent(null);
+    setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
+    // Clear other content types
+    setImageUrls(null);
+    setGeneratedImagesData([]);
+    setFinalVideoUrl(null);
+    setPreviewVideoUrl(null);
+    setVideoStoryboard(null);
+    setMusicVideoStoryboard(null);
+    setLyricsVideoStoryboard(null);
+    
+    try {
+      const content = await generateBusinessNames(description, keywords, style);
+      setBusinessNames(content);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+      setError(`Failed to generate business names: ${message}`);
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const handleGenerateEmailCampaign = useCallback(async (productName: string, productDescription: string, audience: string, campaignType: string, tone: string) => {
+    setIsLoading(true);
+    setError(null);
+    setBlogPostContent(null);
+    setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
+    // Clear other content types
+    setImageUrls(null);
+    setGeneratedImagesData([]);
+    setFinalVideoUrl(null);
+    setPreviewVideoUrl(null);
+    setVideoStoryboard(null);
+    setMusicVideoStoryboard(null);
+    setLyricsVideoStoryboard(null);
+
+    try {
+        const campaigns = await generateEmailCampaign(productName, productDescription, audience, campaignType, tone);
+        setEmailCampaigns(campaigns);
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+        setError(`Failed to generate email campaign: ${message}`);
+        console.error(e);
+    } finally {
+        setIsLoading(false);
+    }
+  }, []);
+
   const handleGenerateImageForPost = useCallback((postText: string, platform: string) => {
     const newPrompt = `A visually appealing, high-quality image for a social media post about: "${postText}". The style should be modern, engaging, and suitable for ${platform}.`;
     
     // Set aspect ratio based on platform
-    let newAspectRatio: AspectRatio = '16:9'; // Default for Twitter/LinkedIn
-    if (platform === 'Instagram') {
-        newAspectRatio = '1:1';
+    let newAspectRatio: AspectRatio = '1:1'; // Default for Instagram/Facebook
+    if (platform === 'Twitter/X' || platform === 'LinkedIn') {
+      newAspectRatio = '16:9'; // Landscape for these platforms
+    } else if (platform === 'TikTok' || platform === 'Pinterest') {
+      newAspectRatio = '9:16'; // Vertical for these platforms
     }
 
     setMode('text-to-image');
@@ -845,6 +1204,8 @@ const App: React.FC = () => {
       setPreviewVideoUrl(null);
       setBlogPostContent(null);
       setSocialMediaPosts(null);
+      setBusinessNames(null);
+      setEmailCampaigns(null);
       setGroundingSources(null);
       setInspirationPrompts([]);
       setVideoStoryboard(null);
@@ -889,6 +1250,8 @@ ${info ? `- Additional Info: "${info}"` : ''}
         setPreviewVideoUrl(null);
         setBlogPostContent(null);
         setSocialMediaPosts(null);
+        setBusinessNames(null);
+        setEmailCampaigns(null);
         setGroundingSources(null);
         setInspirationPrompts([]);
         setVideoStoryboard(null);
@@ -918,6 +1281,8 @@ ${info ? `- Additional Info: "${info}"` : ''}
         setPreviewVideoUrl(null);
         setBlogPostContent(null);
         setSocialMediaPosts(null);
+        setBusinessNames(null);
+        setEmailCampaigns(null);
         setGroundingSources(null);
         setInspirationPrompts([]);
         setVideoStoryboard(null);
@@ -971,6 +1336,8 @@ ${info ? `- Additional Info: "${info}"` : ''}
         setPreviewVideoUrl(null);
         setBlogPostContent(null);
         setSocialMediaPosts(null);
+        setBusinessNames(null);
+        setEmailCampaigns(null);
         setGroundingSources(null);
         setInspirationPrompts([]);
         setVideoStoryboard(null);
@@ -1014,6 +1381,8 @@ ${info ? `- Additional Info: "${info}"` : ''}
     setPreviewVideoUrl(null);
     setBlogPostContent(null);
     setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
     setVideoStoryboard(null);
@@ -1083,6 +1452,8 @@ ${info ? `- Additional Info: "${info}"` : ''}
     setVideoStoryboard(null);
     setBlogPostContent(null);
     setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
     setLyricsVideoStoryboard(null);
     
     try {
@@ -1248,8 +1619,9 @@ ${info ? `- Additional Info: "${info}"` : ''}
 
   const isAnyLoading = isLoading || isPreviewLoading || isEnhancing || isInspiring || isFetchingFromAirtable;
   const isImageDisplayMode = ['text-to-image', 'image-variations', 'ugc-ad', 'product-studio', 'tshirt-mockup', 'avatar-generator', 'creative-chat', 'image-to-prompt', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'title-to-image'].includes(mode);
-  const isVideoDisplayMode = ['text-to-video', 'animate-image', 'video-green-screen'].includes(mode);
-  const isTextDisplayMode = ['blog-post', 'social-media-post'].includes(mode);
+  const isVideoDisplayMode = ['text-to-video', 'animate-image', 'video-green-screen', 'lip-sync'].includes(mode);
+  const isTextDisplayMode = ['blog-post', 'social-media-post', 'email-campaign'].includes(mode);
+  const isBusinessNameDisplayMode = mode === 'business-name-generator';
   const isMusicVideoDisplayMode = mode === 'music-video';
   const isLyricsVideoDisplayMode = mode === 'lyrics-to-video';
   const isAudioDisplayMode = mode === 'audio-to-text';
@@ -1439,6 +1811,20 @@ ${info ? `- Additional Info: "${info}"` : ''}
               </>
             )}
 
+            {mode === 'business-name-generator' && (
+              <>
+                <h2 className="text-xl font-bold text-indigo-400">Business Name Generator</h2>
+                <BusinessNameGenerator onSubmit={handleGenerateBusinessNames} isLoading={isLoading} />
+              </>
+            )}
+            
+            {mode === 'email-campaign' && (
+              <>
+                <h2 className="text-xl font-bold text-indigo-400">Email Campaign Builder</h2>
+                <EmailCampaignGenerator onSubmit={handleGenerateEmailCampaign} isLoading={isLoading} />
+              </>
+            )}
+
             {(mode === 'text-to-video' || mode === 'animate-image' || mode === 'video-green-screen') && (
               <div className="flex flex-col gap-4">
                 <h2 className="text-xl font-bold text-indigo-400">
@@ -1485,6 +1871,13 @@ ${info ? `- Additional Info: "${info}"` : ''}
               <>
                 <h2 className="text-xl font-bold text-indigo-400">Lyrics to Video Generator</h2>
                 <LyricsToVideoGenerator onSubmit={handleGenerateLyricsVideo} isLoading={isLoading} />
+              </>
+            )}
+            
+            {mode === 'lip-sync' && (
+              <>
+                <h2 className="text-xl font-bold text-indigo-400">Lip Sync Generator</h2>
+                <LipSyncGenerator onSubmit={handleGenerateLipSyncVideo} isLoading={isLoading} />
               </>
             )}
 
@@ -1545,7 +1938,11 @@ ${info ? `- Additional Info: "${info}"` : ''}
               <>
                 {mode === 'blog-post' && <BlogPostDisplay content={blogPostContent} isLoading={isLoading} onGenerateHeaderClick={handleGenerateHeaderImage} />}
                 {mode === 'social-media-post' && <SocialMediaPostDisplay posts={socialMediaPosts} isLoading={isLoading} onGenerateImageClick={handleGenerateImageForPost} />}
+                {mode === 'email-campaign' && <EmailCampaignDisplay campaigns={emailCampaigns} isLoading={isLoading} />}
               </>
+            )}
+             {isBusinessNameDisplayMode && (
+              <BusinessNameDisplay names={businessNames} isLoading={isLoading} />
             )}
             {mode === 'explainer-video' && (
               <ExplainerVideoDisplay storyboard={videoStoryboard} isLoading={isLoading} progressMessage={explainerVideoProgress} />

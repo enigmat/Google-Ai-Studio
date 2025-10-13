@@ -35,6 +35,17 @@ export interface SocialMediaPost {
   hashtags: string[];
 }
 
+export interface BusinessName {
+  name: string;
+  rationale: string;
+}
+
+export interface EmailCampaign {
+  subject: string;
+  previewText: string;
+  body: string;
+}
+
 export interface VideoScene {
   sceneNumber: number;
   script: string;
@@ -409,6 +420,84 @@ export const generateSocialMediaPost = async (topic: string, platform: string, t
     });
     return JSON.parse(response.text);
 };
+
+export const generateBusinessNames = async (description: string, keywords: string, style: string): Promise<BusinessName[]> => {
+    const aiClient = getAiClient();
+    try {
+        const keywordText = keywords.trim() ? ` It should incorporate or be inspired by these keywords: "${keywords}".` : '';
+        const prompt = `Generate 10 creative business names for a company with the following description: "${description}". The naming style should be ${style}.${keywordText} For each name, provide a short, one-sentence rationale explaining why it's a good fit.`;
+
+        const response = await aiClient.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            name: {
+                                type: Type.STRING,
+                                description: 'The suggested business name.'
+                            },
+                            rationale: {
+                                type: Type.STRING,
+                                description: 'A brief explanation for the name suggestion.'
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        return JSON.parse(response.text);
+    } catch (error) {
+        console.error("Error generating business names with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while generating business names.");
+    }
+};
+
+export const generateEmailCampaign = async (productName: string, productDescription: string, audience: string, campaignType: string, tone: string): Promise<EmailCampaign[]> => {
+    const aiClient = getAiClient();
+    try {
+        const audienceText = audience.trim() ? ` The target audience is ${audience}.` : '';
+        const prompt = `Generate 3 complete, distinct email variations for a "${campaignType}" campaign about a product/service named "${productName}". 
+        Description: "${productDescription}".${audienceText} The tone should be ${tone}.
+        For each variation, provide a compelling subject line, a short and enticing preview text (under 150 characters), and a full email body formatted in clean, modern HTML. The HTML should be self-contained and use inline styles for maximum compatibility. Include headings, paragraphs, and a clear call-to-action button.`;
+
+        const response = await aiClient.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            subject: { type: Type.STRING },
+                            previewText: { type: Type.STRING },
+                            body: { type: Type.STRING }
+                        },
+                        required: ["subject", "previewText", "body"]
+                    }
+                }
+            }
+        });
+        return JSON.parse(response.text);
+    } catch (error) {
+        console.error("Error generating email campaign with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while generating the email campaign.");
+    }
+};
+
+
 export const generateVideoScriptFromText = async (textContent: string): Promise<{ scenes: VideoScene[] }> => {
     const response = await getAiClient().models.generateContent({
         model: 'gemini-2.5-flash',
@@ -455,6 +544,41 @@ export const generateLyricsStoryboard = async (lyrics: string): Promise<{ scenes
         },
     });
     return JSON.parse(response.text);
+};
+
+export const generateLipSyncVideo = async (imageUrl: string, audioFile: File): Promise<string> => {
+    try {
+        // Step 1: Transcribe audio to text.
+        const transcribedText = await transcribeAudioFromFile(audioFile);
+        if (!transcribedText || !transcribedText.trim()) {
+            throw new Error("Audio transcription returned empty text. Cannot generate video.");
+        }
+
+        // Step 2: Get audio duration to pass to the video generator.
+        const duration = await new Promise<number>((resolve, reject) => {
+            const audio = new Audio(URL.createObjectURL(audioFile));
+            audio.onloadedmetadata = () => {
+                // Veo has a max duration, clamp it to the app's max setting.
+                resolve(Math.min(audio.duration, 8)); 
+            };
+            audio.onerror = (e) => reject(new Error("Could not determine audio duration."));
+        });
+        
+        // Step 3: Create a prompt for the video generation model.
+        const prompt = `Animate the person in this image to look like they are speaking the following words, with natural mouth movements and facial expressions that match the tone: "${transcribedText}"`;
+
+        // Step 4: Generate the video using the image, new prompt, and duration.
+        // We generate the full video directly, as a preview might not be representative.
+        const videoUrl = await generateVideoFromImage(imageUrl, prompt, Math.ceil(duration), false);
+
+        return videoUrl;
+    } catch (error) {
+        console.error("Error generating lip sync video:", error);
+        if (error instanceof Error) {
+            throw new Error(`Lip Sync Generation Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while generating the lip sync video.");
+    }
 };
 
 // --- Audio Transcription Service ---

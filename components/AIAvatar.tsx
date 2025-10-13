@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import { GeneratorMode } from '../constants';
 
@@ -115,6 +112,21 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
     "Think like a movie poster designer! What's the core emotion of your title?",
     "A good synopsis with strong keywords can dramatically improve the result.",
     "The AI is told not to add text, so you get a clean piece of art to work with.",
+  ],
+  'lip-sync': [
+    "For best results, use a clear, front-facing image of a person.",
+    "The AI will transcribe your audio and animate the face to match the words.",
+    "Clear audio without background noise will produce a better transcription and animation.",
+  ],
+  'business-name-generator': [
+    "Be descriptive! The more I know about your business, the better the names will be.",
+    "Try adding keywords that you want to see in your name, like 'tech', 'green', or 'global'.",
+    "Experiment with different naming styles. 'Modern' names are often short and catchy, while 'Classic' names feel more established.",
+  ],
+  'email-campaign': [
+    "Provide a detailed product description for the most relevant email copy.",
+    "Select the campaign type that best matches your goal, whether it's a launch, a sale, or a newsletter.",
+    "Experiment with different tones to see which one best fits your brand's voice.",
   ],
   // FIX: Added missing 'audio-to-text' mode to satisfy the Record<GeneratorMode, string[]> type.
   'audio-to-text': [
