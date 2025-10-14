@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 // FIX: Added all missing function and type imports from geminiService to resolve compilation errors.
-import { generateImageFromPrompt, enhancePrompt, imageAction, generateImageFromReference, generateVideoFromPrompt, generateVideoFromImage, SocialMediaPost, VideoScene, MusicVideoScene, generateImageMetadata, getPromptInspiration, generatePromptFromImage, generateUgcProductAd, generateProductScene, generateMockup, generateBlogPost, generateSocialMediaPost, generateVideoScriptFromText, generateMusicVideoScript, generateLyricsStoryboard, LyricsScene, generateLipSyncVideo, BusinessName, generateBusinessNames, EmailCampaign, generateEmailCampaign } from './services/geminiService';
+import { generateImageFromPrompt, enhancePrompt, imageAction, generateImageFromReference, generateVideoFromPrompt, generateVideoFromImage, SocialMediaPost, VideoScene, MusicVideoScene, generateImageMetadata, getPromptInspiration, generatePromptFromImage, generateUgcProductAd, generateProductScene, generateMockup, generateBlogPost, generateSocialMediaPost, generateVideoScriptFromText, generateMusicVideoScript, generateLyricsStoryboard, LyricsScene, generateLipSyncVideo, BusinessName, generateBusinessNames, EmailCampaign, generateEmailCampaign, CompanyProfile, EbookIdea, generateEbookIdea } from './services/geminiService';
 import { saveImageToAirtable, AirtableConfig, getRandomPromptFromAirtable, getPromptsFromAirtable, updateAirtableRecord } from './services/airtableService';
 import Header from './components/Header';
 import PromptInput from './components/PromptInput';
@@ -53,9 +53,11 @@ import AudioToTextGenerator from './components/AudioToTextGenerator';
 import AudioTranscriptionDisplay from './components/AudioTranscriptionDisplay';
 import LipSyncGenerator from './components/LipSyncGenerator';
 import Loader from './components/Loader';
-// FIX: Removed EbookStudio and EbookDisplay imports as the feature has been disabled.
-// import EbookStudio from './components/EbookStudio';
-// import EbookDisplay from './components/EbookDisplay';
+import TTSButton from './components/TTSButton';
+import { TTSSettingsProvider } from './contexts/TTSSettingsContext';
+import TTSSettingsModal from './components/TTSSettingsModal';
+import EbookIdeaGenerator from './components/EbookIdeaGenerator';
+import EbookIdeaDisplay from './components/EbookIdeaDisplay';
 
 
 type AspectRatio = typeof ASPECT_RATIOS[number];
@@ -165,22 +167,25 @@ const BusinessNameDisplay: React.FC<{
                     <h3 className="text-xl font-bold text-indigo-400">{item.name}</h3>
                     <p className="text-sm text-gray-400 mt-1">{item.rationale}</p>
                 </div>
-                <button
-                    onClick={() => handleCopy(item.name)}
-                    className="flex-shrink-0 p-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-indigo-500"
-                    title={`Copy "${item.name}"`}
-                >
-                    {copiedName === item.name ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                    ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z" />
-                            <path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z" />
-                        </svg>
-                    )}
-                </button>
+                <div className="flex-shrink-0 flex items-start gap-2">
+                  <TTSButton textToSpeak={`${item.name}. ${item.rationale}`} className="p-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-indigo-500" />
+                  <button
+                      onClick={() => handleCopy(item.name)}
+                      className="p-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-indigo-500"
+                      title={`Copy "${item.name}"`}
+                  >
+                      {copiedName === item.name ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                      ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z" />
+                              <path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z" />
+                          </svg>
+                      )}
+                  </button>
+                </div>
             </div>
           ))}
         </div>
@@ -199,10 +204,55 @@ const BusinessNameDisplay: React.FC<{
   );
 };
 
+const CompanyProfileEditor: React.FC<{
+  profile: CompanyProfile | null;
+  onSave: (profile: CompanyProfile) => void;
+}> = ({ profile, onSave }) => {
+  const [name, setName] = useState('');
+  const [details, setDetails] = useState('');
+  const [website, setWebsite] = useState('');
+
+  useEffect(() => {
+    setName(profile?.companyName || '');
+    setDetails(profile?.companyDetails || '');
+    setWebsite(profile?.website || '');
+  }, [profile]);
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({ companyName: name, companyDetails: details, website });
+  };
+  
+  const commonInputClasses = "w-full p-3 bg-gray-900 border-2 border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300";
+
+  return (
+    <form onSubmit={handleSave} className="flex flex-col gap-4">
+      <p className="text-xs text-gray-400">This info will be used to personalize your emails and is saved in your browser.</p>
+      <div>
+        <label htmlFor="company-name" className="block text-sm font-semibold text-gray-400 mb-1">Company Name</label>
+        <input id="company-name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Aura Inc." className={commonInputClasses} />
+      </div>
+      <div>
+        <label htmlFor="company-details" className="block text-sm font-semibold text-gray-400 mb-1">About Your Company</label>
+        <textarea id="company-details" value={details} onChange={(e) => setDetails(e.target.value)} placeholder="e.g., We sell premium, organic skincare products." className={`${commonInputClasses} h-24 resize-none`} />
+      </div>
+      <div>
+        <label htmlFor="company-website" className="block text-sm font-semibold text-gray-400 mb-1">Website URL</label>
+        <input id="company-website" type="url" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://example.com" className={commonInputClasses} />
+      </div>
+      <button type="submit" className="self-end px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-indigo-500">
+        Save Profile
+      </button>
+    </form>
+  );
+};
+
 const EmailCampaignGenerator: React.FC<{
   onSubmit: (productName: string, productDescription: string, audience: string, campaignType: string, tone: string) => void;
   isLoading: boolean;
-}> = ({ onSubmit, isLoading }) => {
+  companyProfile: CompanyProfile | null;
+  onSaveProfile: (profile: CompanyProfile) => void;
+}> = ({ onSubmit, isLoading, companyProfile, onSaveProfile }) => {
   const [productName, setProductName] = useState('');
   const [productDescription, setProductDescription] = useState('');
   const [audience, setAudience] = useState('');
@@ -220,37 +270,51 @@ const EmailCampaignGenerator: React.FC<{
   const commonInputClasses = "w-full p-3 bg-gray-800 border-2 border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300";
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-       <div>
-        <label htmlFor="email-product-name" className="block text-sm font-semibold text-gray-400 mb-1">Product/Service Name</label>
-        <input id="email-product-name" type="text" value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="e.g., 'Aura Glow Serum'" className={commonInputClasses} disabled={isLoading} required />
-      </div>
-      <div>
-        <label htmlFor="email-product-desc" className="block text-sm font-semibold text-gray-400 mb-1">Product/Service Description</label>
-        <textarea id="email-product-desc" value={productDescription} onChange={(e) => setProductDescription(e.target.value)} placeholder="e.g., A hydrating facial serum with vitamin C and hyaluronic acid..." className={`${commonInputClasses} h-24 resize-none`} disabled={isLoading} required/>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="email-campaign-type" className="block text-sm font-semibold text-gray-400 mb-1">Campaign Type</label>
-          <select id="email-campaign-type" value={campaignType} onChange={(e) => setCampaignType(e.target.value)} className={commonSelectClasses} disabled={isLoading}>
-            {EMAIL_CAMPAIGN_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+    <div className="flex flex-col gap-6">
+       <details className="group rounded-lg bg-gray-900/30 border border-gray-700/50 transition-all duration-300 open:border-indigo-500/50">
+        <summary className="cursor-pointer list-none flex items-center justify-between p-3 font-semibold text-gray-300">
+          <span>Company Profile</span>
+          <svg className="h-5 w-5 text-gray-400 transition-transform duration-200 group-open:rotate-90" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+          </svg>
+        </summary>
+        <div className="p-4 pt-0">
+          <CompanyProfileEditor profile={companyProfile} onSave={onSaveProfile} />
+        </div>
+      </details>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+         <h4 className="text-lg font-bold text-indigo-400 -mb-2">Campaign Details</h4>
+         <div>
+          <label htmlFor="email-product-name" className="block text-sm font-semibold text-gray-400 mb-1">Product/Service Name</label>
+          <input id="email-product-name" type="text" value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="e.g., 'Aura Glow Serum'" className={commonInputClasses} disabled={isLoading} required />
         </div>
         <div>
-          <label htmlFor="email-tone" className="block text-sm font-semibold text-gray-400 mb-1">Tone of Voice</label>
-          <select id="email-tone" value={tone} onChange={(e) => setTone(e.target.value)} className={commonSelectClasses} disabled={isLoading}>
-            {BLOG_TONES.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+          <label htmlFor="email-product-desc" className="block text-sm font-semibold text-gray-400 mb-1">Product/Service Description</label>
+          <textarea id="email-product-desc" value={productDescription} onChange={(e) => setProductDescription(e.target.value)} placeholder="e.g., A hydrating facial serum with vitamin C and hyaluronic acid..." className={`${commonInputClasses} h-24 resize-none`} disabled={isLoading} required/>
         </div>
-      </div>
-      <div>
-        <label htmlFor="email-audience" className="block text-sm font-semibold text-gray-400 mb-1">Target Audience (optional)</label>
-        <input id="email-audience" type="text" value={audience} onChange={(e) => setAudience(e.target.value)} placeholder="e.g., Skincare enthusiasts aged 25-40" className={commonInputClasses} disabled={isLoading} />
-      </div>
-      <button type="submit" disabled={isLoading || !productName.trim() || !productDescription.trim()} className="w-full flex items-center justify-center px-6 py-3 mt-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-indigo-500 disabled:bg-indigo-900 disabled:text-gray-400 disabled:cursor-not-allowed transition-all">
-        {isLoading ? 'Generating...' : 'Generate Email Campaign'}
-      </button>
-    </form>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="email-campaign-type" className="block text-sm font-semibold text-gray-400 mb-1">Campaign Type</label>
+            <select id="email-campaign-type" value={campaignType} onChange={(e) => setCampaignType(e.target.value)} className={commonSelectClasses} disabled={isLoading}>
+              {EMAIL_CAMPAIGN_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="email-tone" className="block text-sm font-semibold text-gray-400 mb-1">Tone of Voice</label>
+            <select id="email-tone" value={tone} onChange={(e) => setTone(e.target.value)} className={commonSelectClasses} disabled={isLoading}>
+              {BLOG_TONES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+        </div>
+        <div>
+          <label htmlFor="email-audience" className="block text-sm font-semibold text-gray-400 mb-1">Target Audience (optional)</label>
+          <input id="email-audience" type="text" value={audience} onChange={(e) => setAudience(e.target.value)} placeholder="e.g., Skincare enthusiasts aged 25-40" className={commonInputClasses} disabled={isLoading} />
+        </div>
+        <button type="submit" disabled={isLoading || !productName.trim() || !productDescription.trim()} className="w-full flex items-center justify-center px-6 py-3 mt-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-indigo-500 disabled:bg-indigo-900 disabled:text-gray-400 disabled:cursor-not-allowed transition-all">
+          {isLoading ? 'Generating...' : 'Generate Email Campaign'}
+        </button>
+      </form>
+    </div>
   );
 };
 
@@ -286,7 +350,8 @@ const EmailCampaignDisplay: React.FC<{
               <div className="p-4 bg-white rounded-md max-h-80 overflow-y-auto">
                  <div dangerouslySetInnerHTML={{ __html: email.body }} />
               </div>
-              <div className="flex justify-end mt-3">
+              <div className="flex justify-end items-center mt-3 gap-2">
+                 <TTSButton textToSpeak={`Subject: ${email.subject}. Preview: ${email.previewText}. Body: ${email.body}`} isHtml={true} className="px-3 py-1 bg-gray-700 text-gray-300 text-xs font-semibold rounded-md hover:bg-gray-600 transition-colors" />
                  <button onClick={() => handleCopy(email.body, index)} className="px-3 py-1 bg-gray-700 text-gray-300 text-xs font-semibold rounded-md hover:bg-gray-600 transition-colors">
                     {copiedIndex === index ? 'Copied!' : 'Copy HTML'}
                  </button>
@@ -327,7 +392,7 @@ const GroundingSourcesDisplay: React.FC<{ sources: any[] }> = ({ sources }) => (
     </div>
 );
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const [prompt, setPrompt] = useState<string>('');
   const [promptBeforeEnhance, setPromptBeforeEnhance] = useState<string | null>(null);
   const [negativePrompt, setNegativePrompt] = useState<string>('');
@@ -368,6 +433,9 @@ const App: React.FC = () => {
   const [businessNames, setBusinessNames] = useState<BusinessName[] | null>(null);
   // Email Campaign state
   const [emailCampaigns, setEmailCampaigns] = useState<EmailCampaign[] | null>(null);
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
+  // Ebook Idea state
+  const [ebookIdea, setEbookIdea] = useState<EbookIdea | null>(null);
   // Explainer video state
   const [videoStoryboard, setVideoStoryboard] = useState<StoryboardScene[] | null>(null);
   const [explainerVideoProgress, setExplainerVideoProgress] = useState<string>('');
@@ -389,6 +457,7 @@ const App: React.FC = () => {
   const [isSyncingAirtable, setIsSyncingAirtable] = useState<boolean>(false);
   const [savingToAirtableState, setSavingToAirtableState] = useState<{ status: 'idle' | 'saving'; imageId: string | null }>({ status: 'idle', imageId: null });
   const [toast, setToast] = useState<ToastState>({ show: false, message: '', type: 'success' });
+  const [isTTSSettingsModalOpen, setIsTTSSettingsModalOpen] = useState(false);
   
   const [modalInfo, setModalInfo] = useState<{ isOpen: boolean; imageUrl: string | null }>({
     isOpen: false,
@@ -407,6 +476,7 @@ const App: React.FC = () => {
 
   const STORAGE_KEY = 'ai-generated-images-v2';
   const AIRTABLE_CONFIG_KEY = 'airtable-config';
+  const COMPANY_PROFILE_KEY = 'company-profile';
 
   useEffect(() => {
     // Load saved images
@@ -430,6 +500,16 @@ const App: React.FC = () => {
       }
     } catch (err) {
       console.error("Failed to load Airtable config from local storage:", err);
+    }
+    
+    // Load company profile
+    try {
+      const companyProfileJson = localStorage.getItem(COMPANY_PROFILE_KEY);
+      if (companyProfileJson) {
+          setCompanyProfile(JSON.parse(companyProfileJson));
+      }
+    } catch (err) {
+      console.error("Failed to load company profile from local storage:", err);
     }
   }, []);
   
@@ -474,7 +554,7 @@ const App: React.FC = () => {
   };
   
   const handleSetMode = (newMode: GeneratorMode) => {
-    const isNewModeTextual = ['blog-post', 'social-media-post', 'email-campaign'].includes(newMode);
+    const isNewModeTextual = ['blog-post', 'social-media-post', 'email-campaign', 'ebook-idea'].includes(newMode);
     const isNewModeVideo = newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'video-green-screen' || newMode === 'lyrics-to-video' || newMode === 'lip-sync';
     
     if (isNewModeTextual || isNewModeVideo || ['product-studio', 'tshirt-mockup', 'avatar-generator', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'music-video', 'title-to-image', 'audio-to-text', 'business-name-generator'].includes(newMode)) {
@@ -489,6 +569,7 @@ const App: React.FC = () => {
       setBlogPostContent(null);
       setSocialMediaPosts(null);
       setEmailCampaigns(null);
+      setEbookIdea(null);
     }
      if (newMode !== 'business-name-generator') {
         setBusinessNames(null);
@@ -588,6 +669,7 @@ const App: React.FC = () => {
     setSocialMediaPosts(null);
     setBusinessNames(null);
     setEmailCampaigns(null);
+    setEbookIdea(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
     setVideoStoryboard(null);
@@ -631,6 +713,7 @@ const App: React.FC = () => {
     setSocialMediaPosts(null);
     setBusinessNames(null);
     setEmailCampaigns(null);
+    setEbookIdea(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
     setVideoStoryboard(null);
@@ -669,6 +752,7 @@ const App: React.FC = () => {
     setSocialMediaPosts(null);
     setBusinessNames(null);
     setEmailCampaigns(null);
+    setEbookIdea(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
@@ -699,6 +783,7 @@ const App: React.FC = () => {
     setSocialMediaPosts(null);
     setBusinessNames(null);
     setEmailCampaigns(null);
+    setEbookIdea(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
@@ -735,6 +820,7 @@ const App: React.FC = () => {
     setSocialMediaPosts(null);
     setBusinessNames(null);
     setEmailCampaigns(null);
+    setEbookIdea(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
@@ -779,6 +865,7 @@ const App: React.FC = () => {
     setSocialMediaPosts(null);
     setBusinessNames(null);
     setEmailCampaigns(null);
+    setEbookIdea(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
@@ -816,6 +903,7 @@ const App: React.FC = () => {
     setSocialMediaPosts(null);
     setBusinessNames(null);
     setEmailCampaigns(null);
+    setEbookIdea(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
@@ -952,6 +1040,7 @@ const App: React.FC = () => {
       setSocialMediaPosts(null);
       setBusinessNames(null);
       setEmailCampaigns(null);
+      setEbookIdea(null);
       setEditModalInfo({ isOpen: false, imageUrl: null, mode: 'inpaint' });
       setExpandModalInfo({ isOpen: false, imageUrl: null });
       setAirtableRecord(null); // Image actions create new content, so clear the prompt context
@@ -984,6 +1073,7 @@ const App: React.FC = () => {
     setSocialMediaPosts(null);
     setBusinessNames(null);
     setEmailCampaigns(null);
+    setEbookIdea(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
     setAirtableRecord(null);
@@ -1040,6 +1130,7 @@ const App: React.FC = () => {
     setSocialMediaPosts(null);
     setBusinessNames(null);
     setEmailCampaigns(null);
+    setEbookIdea(null);
     // Clear other content types
     setImageUrls(null);
     setGeneratedImagesData([]);
@@ -1068,6 +1159,7 @@ const App: React.FC = () => {
     setSocialMediaPosts(null);
     setBusinessNames(null);
     setEmailCampaigns(null);
+    setEbookIdea(null);
     // Clear other content types
     setImageUrls(null);
     setGeneratedImagesData([]);
@@ -1096,6 +1188,7 @@ const App: React.FC = () => {
     setSocialMediaPosts(null);
     setBusinessNames(null);
     setEmailCampaigns(null);
+    setEbookIdea(null);
     // Clear other content types
     setImageUrls(null);
     setGeneratedImagesData([]);
@@ -1117,6 +1210,12 @@ const App: React.FC = () => {
     }
   }, []);
 
+  const handleSaveCompanyProfile = (profile: CompanyProfile) => {
+    setCompanyProfile(profile);
+    localStorage.setItem(COMPANY_PROFILE_KEY, JSON.stringify(profile));
+    showToast('Company profile saved!', 'success');
+  };
+
   const handleGenerateEmailCampaign = useCallback(async (productName: string, productDescription: string, audience: string, campaignType: string, tone: string) => {
     setIsLoading(true);
     setError(null);
@@ -1124,6 +1223,7 @@ const App: React.FC = () => {
     setSocialMediaPosts(null);
     setBusinessNames(null);
     setEmailCampaigns(null);
+    setEbookIdea(null);
     // Clear other content types
     setImageUrls(null);
     setGeneratedImagesData([]);
@@ -1134,7 +1234,7 @@ const App: React.FC = () => {
     setLyricsVideoStoryboard(null);
 
     try {
-        const campaigns = await generateEmailCampaign(productName, productDescription, audience, campaignType, tone);
+        const campaigns = await generateEmailCampaign(productName, productDescription, audience, campaignType, tone, companyProfile);
         setEmailCampaigns(campaigns);
     } catch (e: unknown) {
         const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
@@ -1142,6 +1242,35 @@ const App: React.FC = () => {
         console.error(e);
     } finally {
         setIsLoading(false);
+    }
+  }, [companyProfile]);
+  
+  const handleGenerateEbookIdea = useCallback(async (genre: string, audience: string, themes: string, setting: string, protagonist: string) => {
+    setIsLoading(true);
+    setError(null);
+    setBlogPostContent(null);
+    setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
+    setEbookIdea(null);
+    // Clear other content types
+    setImageUrls(null);
+    setGeneratedImagesData([]);
+    setFinalVideoUrl(null);
+    setPreviewVideoUrl(null);
+    setVideoStoryboard(null);
+    setMusicVideoStoryboard(null);
+    setLyricsVideoStoryboard(null);
+    
+    try {
+      const idea = await generateEbookIdea(genre, audience, themes, setting, protagonist);
+      setEbookIdea(idea);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+      setError(`Failed to generate ebook idea: ${message}`);
+      console.error(e);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -1195,6 +1324,21 @@ const App: React.FC = () => {
     showToast('Prompt for header image has been set!', 'success');
   }, [blogPostContent]);
   
+  const handleGenerateCoverForEbook = useCallback((title: string, summary: string) => {
+    const newPrompt = `A visually stunning book cover for a story titled "${title}". The story is about: "${summary}". Do NOT include any text, letters, or words. The style should be cinematic and evocative, suitable for the book's genre.`;
+    
+    setMode('title-to-image'); // This mode is already set to 9:16 and handles no-text prompts
+    setPrompt(newPrompt);
+    setPromptBeforeEnhance(null);
+    setInspirationPrompts([]);
+    setGroundingSources(null);
+    setImageUrls(null);
+    setGeneratedImagesData([]);
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    showToast('Prompt for your book cover has been set!', 'success');
+  }, []);
+
   const handleGenerateFlyer = useCallback(async (title: string, date: string, time: string, location: string, info: string, style: string, color: string) => {
       setIsLoading(true);
       setError(null);
@@ -1206,6 +1350,7 @@ const App: React.FC = () => {
       setSocialMediaPosts(null);
       setBusinessNames(null);
       setEmailCampaigns(null);
+      setEbookIdea(null);
       setGroundingSources(null);
       setInspirationPrompts([]);
       setVideoStoryboard(null);
@@ -1252,6 +1397,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
         setSocialMediaPosts(null);
         setBusinessNames(null);
         setEmailCampaigns(null);
+        setEbookIdea(null);
         setGroundingSources(null);
         setInspirationPrompts([]);
         setVideoStoryboard(null);
@@ -1283,6 +1429,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
         setSocialMediaPosts(null);
         setBusinessNames(null);
         setEmailCampaigns(null);
+        setEbookIdea(null);
         setGroundingSources(null);
         setInspirationPrompts([]);
         setVideoStoryboard(null);
@@ -1338,6 +1485,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
         setSocialMediaPosts(null);
         setBusinessNames(null);
         setEmailCampaigns(null);
+        setEbookIdea(null);
         setGroundingSources(null);
         setInspirationPrompts([]);
         setVideoStoryboard(null);
@@ -1383,6 +1531,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
     setSocialMediaPosts(null);
     setBusinessNames(null);
     setEmailCampaigns(null);
+    setEbookIdea(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
     setVideoStoryboard(null);
@@ -1454,6 +1603,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
     setSocialMediaPosts(null);
     setBusinessNames(null);
     setEmailCampaigns(null);
+    setEbookIdea(null);
     setLyricsVideoStoryboard(null);
     
     try {
@@ -1620,7 +1770,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
   const isAnyLoading = isLoading || isPreviewLoading || isEnhancing || isInspiring || isFetchingFromAirtable;
   const isImageDisplayMode = ['text-to-image', 'image-variations', 'ugc-ad', 'product-studio', 'tshirt-mockup', 'avatar-generator', 'creative-chat', 'image-to-prompt', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'title-to-image'].includes(mode);
   const isVideoDisplayMode = ['text-to-video', 'animate-image', 'video-green-screen', 'lip-sync'].includes(mode);
-  const isTextDisplayMode = ['blog-post', 'social-media-post', 'email-campaign'].includes(mode);
+  const isTextDisplayMode = ['blog-post', 'social-media-post', 'email-campaign', 'ebook-idea'].includes(mode);
   const isBusinessNameDisplayMode = mode === 'business-name-generator';
   const isMusicVideoDisplayMode = mode === 'music-video';
   const isLyricsVideoDisplayMode = mode === 'lyrics-to-video';
@@ -1628,7 +1778,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
 
   return (
     <div className="bg-gray-900 text-white min-h-screen flex flex-col items-center font-sans">
-      <Header onSettingsClick={() => setIsSettingsModalOpen(true)} />
+      <Header onSettingsClick={() => setIsSettingsModalOpen(true)} onTTSSettingsClick={() => setIsTTSSettingsModalOpen(true)} />
       <main className="w-full max-w-7xl p-4 flex-grow flex flex-col gap-8">
         <div className="w-full max-w-4xl mx-auto">
           <ModeSelector mode={mode} setMode={handleSetMode} />
@@ -1821,7 +1971,19 @@ ${info ? `- Additional Info: "${info}"` : ''}
             {mode === 'email-campaign' && (
               <>
                 <h2 className="text-xl font-bold text-indigo-400">Email Campaign Builder</h2>
-                <EmailCampaignGenerator onSubmit={handleGenerateEmailCampaign} isLoading={isLoading} />
+                <EmailCampaignGenerator 
+                  onSubmit={handleGenerateEmailCampaign} 
+                  isLoading={isLoading}
+                  companyProfile={companyProfile}
+                  onSaveProfile={handleSaveCompanyProfile}
+                />
+              </>
+            )}
+            
+            {mode === 'ebook-idea' && (
+              <>
+                <h2 className="text-xl font-bold text-indigo-400">Ebook Idea Generator</h2>
+                <EbookIdeaGenerator onSubmit={handleGenerateEbookIdea} isLoading={isLoading} />
               </>
             )}
 
@@ -1900,7 +2062,6 @@ ${info ? `- Additional Info: "${info}"` : ''}
                 />
               </>
             )}
-            {/* FIX: The 'ebook' mode section has been removed as the feature is disabled. */}
           </div>
           
           {/* --- RIGHT COLUMN (DISPLAY) --- */}
@@ -1939,6 +2100,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
                 {mode === 'blog-post' && <BlogPostDisplay content={blogPostContent} isLoading={isLoading} onGenerateHeaderClick={handleGenerateHeaderImage} />}
                 {mode === 'social-media-post' && <SocialMediaPostDisplay posts={socialMediaPosts} isLoading={isLoading} onGenerateImageClick={handleGenerateImageForPost} />}
                 {mode === 'email-campaign' && <EmailCampaignDisplay campaigns={emailCampaigns} isLoading={isLoading} />}
+                {mode === 'ebook-idea' && <EbookIdeaDisplay idea={ebookIdea} isLoading={isLoading} onGenerateCoverClick={handleGenerateCoverForEbook} />}
               </>
             )}
              {isBusinessNameDisplayMode && (
@@ -2021,10 +2183,20 @@ ${info ? `- Additional Info: "${info}"` : ''}
             getPrompts={getPromptsFromAirtable}
         />
       )}
+      <TTSSettingsModal isOpen={isTTSSettingsModalOpen} onClose={() => setIsTTSSettingsModalOpen(false)} />
       <Toast message={toast.message} type={toast.type} show={toast.show} />
       <AIAvatar mode={mode} error={error} isLoading={isLoading} isPreviewLoading={isPreviewLoading} />
     </div>
   );
 };
+
+const App: React.FC = () => {
+  return (
+    <TTSSettingsProvider>
+      <AppContent />
+    </TTSSettingsProvider>
+  );
+};
+
 
 export default App;

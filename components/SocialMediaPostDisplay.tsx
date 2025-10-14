@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Loader from './Loader';
 import { SocialMediaPost } from '../services/geminiService';
+import TTSButton from './TTSButton';
 
 interface SocialMediaPostDisplayProps {
   posts: SocialMediaPost[] | null;
@@ -40,16 +41,17 @@ const SocialMediaPostDisplay: React.FC<SocialMediaPostDisplayProps> = ({ posts, 
                 </div>
               )}
               <div className="flex items-center gap-2 mt-4 pt-3 border-t border-gray-700/50">
+                <TTSButton textToSpeak={`${post.post_text} ${post.hashtags.map(h => `#${h}`).join(' ')}`} className="p-2 bg-gray-700 text-gray-300 rounded-md hover:bg-gray-600 transition-colors" />
                 <button
                   onClick={() => handleCopy(post, index)}
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-700 text-gray-300 text-sm font-semibold rounded-md hover:bg-gray-600 transition-colors"
+                  className="flex-grow flex items-center justify-center gap-2 px-3 py-2 bg-gray-700 text-gray-300 text-sm font-semibold rounded-md hover:bg-gray-600 transition-colors"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z" /><path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z" /></svg>
                   {copiedPostIndex === index ? 'Copied!' : 'Copy Post'}
                 </button>
                 <button
                   onClick={() => onGenerateImageClick(`${post.post_text}`, post.platform)}
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-md hover:bg-indigo-700 transition-colors"
+                  className="flex-grow flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-md hover:bg-indigo-700 transition-colors"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5zm0 2h10v7h-2.586l-1.707-1.707a1 1 0 00-1.414 0L7 14.586V9a1 1 0 00-2 0v6.586l-1.293-1.293a1 1 0 00-1.414 1.414L4.586 17H5V5zm10 7a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" /></svg>
                   Generate Image

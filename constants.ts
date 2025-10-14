@@ -1,4 +1,4 @@
-export type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup' | 'blog-post' | 'social-media-post' | 'avatar-generator' | 'image-variations' | 'flyer-generator' | 'explainer-video' | 'logo-generator' | 'thumbnail-generator' | 'video-green-screen' | 'recreate-thumbnail' | 'music-video' | 'title-to-image' | 'lyrics-to-video' | 'audio-to-text' | 'lip-sync' | 'business-name-generator' | 'email-campaign';
+export type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup' | 'blog-post' | 'social-media-post' | 'avatar-generator' | 'image-variations' | 'flyer-generator' | 'explainer-video' | 'logo-generator' | 'thumbnail-generator' | 'video-green-screen' | 'recreate-thumbnail' | 'music-video' | 'title-to-image' | 'lyrics-to-video' | 'audio-to-text' | 'lip-sync' | 'business-name-generator' | 'email-campaign' | 'ebook-idea';
 
 export const EXAMPLE_PROMPTS = [
   "A majestic lion with a cosmic mane",
@@ -31,6 +31,8 @@ export const BLOG_LENGTHS = ['Short (~300 words)', 'Medium (~600 words)', 'Long 
 export const BUSINESS_NAME_STYLES = ['Modern', 'Classic', 'Playful', 'One Word', 'Elegant'];
 export const SOCIAL_MEDIA_PLATFORMS = ['Twitter/X', 'Instagram', 'Facebook', 'LinkedIn', 'TikTok', 'Pinterest'];
 export const EMAIL_CAMPAIGN_TYPES = ['Product Launch', 'Newsletter', 'Promotion / Sale', 'Welcome Email'];
+export const EBOOK_GENRES = ['Science Fiction', 'Fantasy', 'Mystery', 'Thriller', 'Romance', 'Horror', 'Historical Fiction', 'Dystopian'];
+export const EBOOK_AUDIENCES = ['Children', 'Young Adult', 'New Adult', 'Adult'];
 export const LOGO_STYLES = ['Minimalist', 'Geometric', 'Mascot', 'Abstract', 'Vintage', 'Modern'];
 export const AVATAR_GENDERS = ['Female', 'Male', 'Non-binary'];
 export const AVATAR_AGES = ['Child', 'Teenager', 'Young Adult', 'Adult', 'Elderly'];

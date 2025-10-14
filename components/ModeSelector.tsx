@@ -43,7 +43,7 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ mode, setMode }) => {
       {/* Category: Content & Marketing */}
       <div>
         <h3 className="text-sm font-semibold text-gray-500 mb-2 px-1">Content & Marketing</h3>
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 w-full bg-gray-800 rounded-lg p-1 border border-gray-700">
+        <div className="grid grid-cols-3 sm:grid-cols-7 gap-1 w-full bg-gray-800 rounded-lg p-1 border border-gray-700">
             <ModeButton currentMode={mode} targetMode="logo-generator" setMode={setMode}>Logo</ModeButton>
             <ModeButton currentMode={mode} targetMode="business-name-generator" setMode={setMode}>Business Name</ModeButton>
             <ModeButton currentMode={mode} targetMode="thumbnail-generator" setMode={setMode}>Thumbnail</ModeButton>
@@ -56,6 +56,7 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ mode, setMode }) => {
             <ModeButton currentMode={mode} targetMode="blog-post" setMode={setMode}>Blog Post</ModeButton>
             <ModeButton currentMode={mode} targetMode="social-media-post" setMode={setMode}>Social Media</ModeButton>
             <ModeButton currentMode={mode} targetMode="email-campaign" setMode={setMode}>Email Campaign</ModeButton>
+            <ModeButton currentMode={mode} targetMode="ebook-idea" setMode={setMode}>Ebook Idea</ModeButton>
         </div>
       </div>
       

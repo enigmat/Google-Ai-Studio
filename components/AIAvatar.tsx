@@ -128,6 +128,12 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
     "Select the campaign type that best matches your goal, whether it's a launch, a sale, or a newsletter.",
     "Experiment with different tones to see which one best fits your brand's voice.",
   ],
+  // FIX: Added missing 'ebook-idea' property to the MODE_TIPS object.
+  'ebook-idea': [
+    "Combine different genres and themes for a unique story idea!",
+    "The 'Protagonist' field helps you define your main character from the start.",
+    "Click 'Generate Cover Art' on your idea to visualize the book!",
+  ],
   // FIX: Added missing 'audio-to-text' mode to satisfy the Record<GeneratorMode, string[]> type.
   'audio-to-text': [
     "Click the microphone to start recording. I'll transcribe your speech in real-time.",

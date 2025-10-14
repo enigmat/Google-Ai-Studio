@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Loader from './Loader';
+import TTSButton from './TTSButton';
 
 interface BlogPostDisplayProps {
   content: string | null;
@@ -37,6 +38,7 @@ const BlogPostDisplay: React.FC<BlogPostDisplayProps> = ({ content, isLoading, o
       ) : content ? (
         <>
           <div className="absolute top-3 right-3 flex gap-2">
+            <TTSButton textToSpeak={content} isHtml={true} className="px-3 py-1 bg-gray-700 text-gray-300 text-xs font-semibold rounded-md hover:bg-gray-600 transition-colors" />
             <button
               onClick={() => handleCopy('html')}
               className="px-3 py-1 bg-gray-700 text-gray-300 text-xs font-semibold rounded-md hover:bg-gray-600 transition-colors"

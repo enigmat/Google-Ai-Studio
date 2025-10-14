@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import TTSButton from './TTSButton';
 
 interface AudioTranscriptionDisplayProps {
   finalText: string;
@@ -27,6 +28,7 @@ const AudioTranscriptionDisplay: React.FC<AudioTranscriptionDisplayProps> = ({ f
     <div className="relative w-full h-full min-h-[500px] bg-gray-800 border-2 border-dashed border-gray-700 rounded-lg flex flex-col p-4 transition-all duration-300">
       {hasText && (
           <div className="absolute top-3 right-3 flex gap-2">
+            <TTSButton textToSpeak={finalText + interimText} className="px-3 py-1 bg-gray-700 text-gray-300 text-xs font-semibold rounded-md hover:bg-gray-600 transition-colors" />
             <button
               onClick={handleCopy}
               disabled={!hasText}

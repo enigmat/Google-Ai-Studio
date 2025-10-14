@@ -1,3 +1,5 @@
+
+
 import { GoogleGenAI, Modality, Type, GenerateContentResponse, LiveServerMessage, Blob, CloseEvent, ErrorEvent } from "@google/genai";
 
 // The AI client is initialized lazily to avoid crashing the app if the API key is missing.
@@ -28,7 +30,6 @@ const getAiClient = (): GoogleGenAI => {
     return ai;
 };
 
-// FIX: Added missing type definitions for storyboard and social media features.
 export interface SocialMediaPost {
   platform: string;
   post_text: string;
@@ -44,6 +45,20 @@ export interface EmailCampaign {
   subject: string;
   previewText: string;
   body: string;
+}
+
+export interface CompanyProfile {
+  companyName: string;
+  companyDetails: string;
+  website: string;
+}
+
+export interface EbookIdea {
+  title: string;
+  logline: string;
+  summary: string;
+  characters: { name: string; description: string }[];
+  themes: string[];
 }
 
 export interface VideoScene {
@@ -288,29 +303,36 @@ export const enhancePrompt = async (originalPrompt: string, useGoogleSearch: boo
     throw new Error("An unknown error occurred while enhancing the prompt.");
   }
 };
-
-const processImageEditingResponse = (response: any): string => {
-    if (response.candidates && response.candidates.length > 0) {
-        for (const part of response.candidates[0].content.parts) {
-            if (part.inlineData) {
-                const base64ImageBytes: string = part.inlineData.data;
-                const outputMimeType = part.inlineData.mimeType || 'image/png';
-                return `data:${outputMimeType};base64,${base64ImageBytes}`;
+// FIX: Implement and export all missing functions required by the application.
+// Helper to convert a file to a base64 data URL
+const fileToDataUrl = (file: File): Promise<{ base64Data: string; mimeType: string }> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const dataUrl = reader.result as string;
+            const match = dataUrl.match(/^data:(.+);base64,(.+)$/);
+            if (!match) {
+                return reject(new Error("Invalid data URL format"));
             }
-        }
-    }
-    throw new Error("No edited image was generated. The model may have returned only text.");
+            const mimeType = match[1];
+            const base64Data = match[2];
+            resolve({ base64Data, mimeType });
+        };
+        reader.onerror = (error) => reject(error);
+        reader.readAsDataURL(file);
+    });
 };
 
-export const imageAction = async (originalImageUrl: string, prompt: string): Promise<string> => {
+// --- Image Editing ---
+export const imageAction = async (imageUrl: string, prompt: string): Promise<string> => {
     const aiClient = getAiClient();
     try {
-        const { base64Data, mimeType } = parseDataUrl(originalImageUrl);
+        const { base64Data, mimeType } = parseDataUrl(imageUrl);
         const response = await aiClient.models.generateContent({
-            model: 'gemini-2.5-flash-image-preview',
+            model: 'gemini-2.5-flash-image',
             contents: {
                 parts: [
-                    { inlineData: { data: base64Data, mimeType: mimeType } },
+                    { inlineData: { data: base64Data, mimeType } },
                     { text: prompt },
                 ],
             },
@@ -318,9 +340,16 @@ export const imageAction = async (originalImageUrl: string, prompt: string): Pro
                 responseModalities: [Modality.IMAGE, Modality.TEXT],
             },
         });
-        return processImageEditingResponse(response);
+
+        const imagePart = response.candidates?.[0]?.content?.parts?.find(part => part.inlineData);
+        if (imagePart?.inlineData) {
+            const base64ImageBytes: string = imagePart.inlineData.data;
+            const imageMimeType = imagePart.inlineData.mimeType || 'image/png';
+            return `data:${imageMimeType};base64,${base64ImageBytes}`;
+        }
+        throw new Error("No image was returned from the image action.");
     } catch (error) {
-        console.error("Error with image action using Gemini API:", error);
+        console.error("Error performing image action with Gemini API:", error);
         if (error instanceof Error) {
             throw new Error(`Gemini API Error: ${error.message}`);
         }
@@ -328,108 +357,179 @@ export const imageAction = async (originalImageUrl: string, prompt: string): Pro
     }
 };
 
-// FIX: Implemented the function to return a value, resolving the compilation error.
-export const generateImageFromReference = async (referenceImageUrl: string, prompt: string, negativePrompt?: string, context?: 'avatar'): Promise<string> => {
+export const generateImageFromReference = async (referenceImageUrl: string, prompt: string, negativePrompt?: string, mode?: string): Promise<string> => {
     let finalPrompt = prompt;
-    if (context === 'avatar') {
-        finalPrompt = `Use the provided photo as a strong reference for the person's facial features and likeness. Generate a new image that closely matches the person but in this new style: ${prompt}.`;
+    if(mode === 'avatar') {
+        finalPrompt = `Create an avatar based on the provided reference image with the following style: ${prompt}. Do not include text.`;
+    } else {
+        finalPrompt = `Using the provided image as a strong reference for composition, style, and subject, create a new image based on this prompt: "${prompt}".`;
     }
+
     if (negativePrompt && negativePrompt.trim()) {
-        finalPrompt += `. Avoid: ${negativePrompt.trim()}`;
+        finalPrompt += ` Avoid the following: ${negativePrompt.trim()}`;
     }
     return imageAction(referenceImageUrl, finalPrompt);
 };
 
-// FIX: Added missing service functions. These are wrappers around the generic 'imageAction' or text generation models.
-export const editImage = (maskedImageUrl: string, prompt: string): Promise<string> => imageAction(maskedImageUrl, prompt);
-export const removeBackground = (imageUrl: string): Promise<string> => imageAction(imageUrl, "remove the background, make it transparent");
-export const upscaleImage = (imageUrl: string): Promise<string> => imageAction(imageUrl, "Upscale this image to a higher resolution, enhance details, make it 4k, sharp focus");
-export const expandImage = (expandedCanvasUrl: string, prompt: string): Promise<string> => imageAction(expandedCanvasUrl, prompt || "Fill in the transparent areas seamlessly, continuing the existing image.");
-export const removeObject = (maskedImageUrl: string): Promise<string> => imageAction(maskedImageUrl, "remove the masked object and realistically fill in the background");
-export const generateUgcProductAd = (productImageUrl: string, productName: string, productDescription: string): Promise<string> => {
-    const prompt = `Create a user-generated content (UGC) style ad featuring this product: ${productName}. Description: ${productDescription}. The image should look like an authentic social media post, possibly with a person subtly interacting with the product in a lifestyle setting. Bright, natural lighting.`;
-    return imageAction(productImageUrl, prompt);
-};
-export const generateProductScene = (productUrl: string, scenePrompt: string): Promise<string> => imageAction(productUrl, `Place this product with a transparent background realistically into the following scene: ${scenePrompt}. Ensure lighting and shadows on the product match the new background.`);
-export const generateMockup = async (designUrl: string, mockupUrl: string): Promise<string> => {
-    const prompt = 'Apply the second image (the design) onto the first image (the t-shirt). The design should conform realistically to the fabric, including wrinkles and lighting.';
-    const { base64Data: designData, mimeType: designMime } = parseDataUrl(designUrl);
-    const { base64Data: mockupData, mimeType: mockupMime } = parseDataUrl(mockupUrl);
-    return processImageEditingResponse(await getAiClient().models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
-        contents: { parts: [{ inlineData: { data: mockupData, mimeType: mockupMime } }, { inlineData: { data: designData, mimeType: designMime } }, { text: prompt },] },
-        config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
-    }));
-};
-export const generateImageMetadata = async (imageUrl: string, usedPrompt: string): Promise<{ title: string; description: string; tags: string[] }> => {
-  const { base64Data, mimeType } = parseDataUrl(imageUrl);
-  const response = await getAiClient().models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: { parts: [{ inlineData: { data: base64Data, mimeType } }, { text: `Based on this image and the prompt used to create it ("${usedPrompt}"), generate a short, catchy title (under 10 words), a one-sentence description, and 5 relevant keyword tags.` }] },
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, description: { type: Type.STRING }, tags: { type: Type.ARRAY, items: { type: Type.STRING } } } },
-    },
-  });
-  return JSON.parse(response.text);
-};
-export const getPromptInspiration = async (): Promise<string[]> => JSON.parse((await getAiClient().models.generateContent({ model: 'gemini-2.5-flash', contents: 'Generate 3 highly creative and visually interesting prompts for an AI image generator. Each prompt should be a single sentence.', config: { responseMimeType: "application/json", responseSchema: { type: Type.ARRAY, items: { type: Type.STRING } } } })).text);
-export const generatePromptFromImage = async (imageUrl: string): Promise<string> => {
-    const { base64Data, mimeType } = parseDataUrl(imageUrl);
-    return (await getAiClient().models.generateContent({ model: 'gemini-2.5-flash', contents: { parts: [{ inlineData: { data: base64Data, mimeType } }, { text: 'Describe this image in detail to create a prompt for an AI image generator. Include details about the subject, setting, style, lighting, and composition.' }] } })).text;
+// --- Metadata and Inspiration ---
+export const generateImageMetadata = async (imageUrl: string, prompt: string): Promise<{ title: string, description: string, tags: string[] }> => {
+    const aiClient = getAiClient();
+    try {
+        const { base64Data, mimeType } = parseDataUrl(imageUrl);
+        const response = await aiClient.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: {
+                parts: [
+                    { text: `Analyze the following user prompt and the resulting generated image. Based on both, generate a short, catchy title (5-10 words), a concise description (15-25 words), and 5-7 relevant comma-separated tags.\n\nUSER PROMPT: "${prompt}"\n\nIMAGE:` },
+                    { inlineData: { data: base64Data, mimeType } }
+                ]
+            },
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        title: { type: Type.STRING },
+                        description: { type: Type.STRING },
+                        tags: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING }
+                        }
+                    },
+                    required: ['title', 'description', 'tags']
+                },
+            },
+        });
+        const jsonStr = response.text.trim();
+        return JSON.parse(jsonStr);
+    } catch (error) {
+        console.error("Error generating image metadata with Gemini API:", error);
+        return { // Return default metadata on failure
+            title: "AI Generated Artwork",
+            description: `An image created from the prompt: "${prompt.substring(0, 100)}..."`,
+            tags: ["ai-art", "generated-image"],
+        };
+    }
 };
 
-export const generateBlogTopicIdeas = async (category: string): Promise<string[]> => {
+export const getPromptInspiration = async (): Promise<string[]> => {
     const aiClient = getAiClient();
     try {
         const response = await aiClient.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: `Generate 5 interesting and engaging blog post topic ideas for the category: ${category}.`,
+            model: "gemini-2.5-flash",
+            contents: "Generate 3 diverse and creative prompts for an AI image generator. The prompts should be visually descriptive and imaginative. Return a JSON array of strings.",
             config: {
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.ARRAY,
-                    items: {
-                        type: Type.STRING
-                    }
-                }
-            }
+                    items: { type: Type.STRING }
+                },
+            },
         });
-        return JSON.parse(response.text);
+        const jsonStr = response.text.trim();
+        return JSON.parse(jsonStr);
     } catch (error) {
-        console.error("Error generating blog topic ideas with Gemini API:", error);
+        console.error("Error getting prompt inspiration with Gemini API:", error);
         if (error instanceof Error) {
             throw new Error(`Gemini API Error: ${error.message}`);
         }
-        throw new Error("An unknown error occurred while generating blog topic ideas.");
+        throw new Error("An unknown error occurred while getting prompt inspiration.");
     }
 };
 
-export const generateBlogPost = async (topic: string, tone: string, length: string, audience: string): Promise<string> => {
-    const audienceText = audience.trim() ? ` for an audience of ${audience.trim()}` : '';
-    return (await getAiClient().models.generateContent({ model: 'gemini-2.5-flash', contents: `Write a blog post about "${topic}". The tone should be ${tone}, the length should be approximately ${length}, and it should be written${audienceText}. The output must be formatted in clean HTML, including h1, h2, p, and ul/li tags. Do not include <!DOCTYPE>, <html>, <head>, or <body> tags. Start directly with the <h1> title tag.` })).text;
-};
-export const generateSocialMediaPost = async (topic: string, platform: string, tone: string, audience: string, includeHashtags: boolean, includeEmojis: boolean): Promise<SocialMediaPost[]> => {
-    const audienceText = audience.trim() ? ` for an audience of ${audience.trim()}` : '';
-    const hashtagsText = includeHashtags ? 'and relevant hashtags' : '';
-    const emojisText = includeEmojis ? 'and appropriate emojis' : '';
-    const response = await getAiClient().models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: `Generate 3 social media posts about "${topic}" for the platform ${platform}. The tone should be ${tone}${audienceText}. Include the text of the post ${hashtagsText} ${emojisText}.`,
-        config: { responseMimeType: "application/json", responseSchema: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { platform: { type: Type.STRING }, post_text: { type: Type.STRING }, hashtags: { type: Type.ARRAY, items: { type: Type.STRING } } } } } },
-    });
-    return JSON.parse(response.text);
-};
-
-export const generateBusinessNames = async (description: string, keywords: string, style: string): Promise<BusinessName[]> => {
+export const generatePromptFromImage = async (imageUrl: string): Promise<string> => {
     const aiClient = getAiClient();
     try {
-        const keywordText = keywords.trim() ? ` It should incorporate or be inspired by these keywords: "${keywords}".` : '';
-        const prompt = `Generate 10 creative business names for a company with the following description: "${description}". The naming style should be ${style}.${keywordText} For each name, provide a short, one-sentence rationale explaining why it's a good fit.`;
-
+        const { base64Data, mimeType } = parseDataUrl(imageUrl);
         const response = await aiClient.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: prompt,
+            contents: {
+                parts: [
+                    { text: "Describe this image in detail, as if you were creating a prompt for an AI image generator. Be descriptive about the subject, style, lighting, and composition." },
+                    { inlineData: { data: base64Data, mimeType } }
+                ]
+            },
+        });
+        return response.text.trim();
+    } catch (error) {
+        console.error("Error generating prompt from image with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while generating prompt from image.");
+    }
+};
+
+// --- Product and Marketing Image Generation ---
+export const generateUgcProductAd = async (productImageUrl: string, productName: string, productDescription: string): Promise<string> => {
+    const prompt = `Create a realistic User-Generated Content (UGC) style ad image. The image should feature the provided product: '${productName}'. The scene should look authentic, as if a real customer is using and enjoying the product in a natural, everyday setting (e.g., at home, outdoors). The product description is: '${productDescription}'.`;
+    return imageAction(productImageUrl, prompt);
+};
+
+export const generateProductScene = async (productUrl: string, scenePrompt: string): Promise<string> => {
+    const prompt = `Place the provided product image (which has a transparent background) into the following scene: "${scenePrompt}". Ensure the lighting, shadows, and perspective of the product realistically match the new background.`;
+    return imageAction(productUrl, prompt);
+};
+
+export const generateMockup = async (designUrl: string, mockupUrl: string): Promise<string> => {
+    const prompt = `Apply the first provided image (the design) onto the second provided image (the T-shirt mockup). The design should be placed realistically on the chest of the T-shirt, conforming to the fabric's folds, lighting, and shadows.`;
+    const aiClient = getAiClient();
+    try {
+        const { base64Data: designData, mimeType: designMime } = parseDataUrl(designUrl);
+        const { base64Data: mockupData, mimeType: mockupMime } = parseDataUrl(mockupUrl);
+        const response = await aiClient.models.generateContent({
+            model: 'gemini-2.5-flash-image',
+            contents: {
+                parts: [
+                    { text: prompt },
+                    { inlineData: { data: designData, mimeType: designMime } },
+                    { inlineData: { data: mockupData, mimeType: mockupMime } },
+                ],
+            },
+            config: {
+                responseModalities: [Modality.IMAGE, Modality.TEXT],
+            },
+        });
+        const imagePart = response.candidates?.[0]?.content?.parts?.find(part => part.inlineData);
+        if (imagePart?.inlineData) {
+            const base64ImageBytes: string = imagePart.inlineData.data;
+            const imageMimeType = imagePart.inlineData.mimeType || 'image/png';
+            return `data:${imageMimeType};base64,${base64ImageBytes}`;
+        }
+        throw new Error("No image was returned from the mockup generation.");
+    } catch (error) {
+        console.error("Error generating mockup with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred during mockup generation.");
+    }
+};
+
+// --- Text Generation ---
+export const generateBlogPost = async (topic: string, tone: string, length: string, audience: string): Promise<string> => {
+    const aiClient = getAiClient();
+    try {
+        const response = await aiClient.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Write a blog post about "${topic}". The tone should be ${tone}. The desired length is ${length}. The target audience is ${audience}. Format the output as clean HTML with headings, paragraphs, and lists.`,
+        });
+        return response.text.trim();
+    } catch (error) {
+        console.error("Error generating blog post with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while generating the blog post.");
+    }
+};
+
+export const generateSocialMediaPost = async (topic: string, platform: string, tone: string, audience: string, includeHashtags: boolean, includeEmojis: boolean): Promise<SocialMediaPost[]> => {
+    const aiClient = getAiClient();
+    try {
+        const response = await aiClient.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Generate 3 social media post variations about "${topic}" for the platform ${platform}. The tone should be ${tone}. The target audience is ${audience}. ${includeHashtags ? 'Include relevant hashtags.' : ''} ${includeEmojis ? 'Include relevant emojis.' : ''}`,
             config: {
                 responseMimeType: "application/json",
                 responseSchema: {
@@ -437,20 +537,49 @@ export const generateBusinessNames = async (description: string, keywords: strin
                     items: {
                         type: Type.OBJECT,
                         properties: {
-                            name: {
-                                type: Type.STRING,
-                                description: 'The suggested business name.'
-                            },
-                            rationale: {
-                                type: Type.STRING,
-                                description: 'A brief explanation for the name suggestion.'
-                            }
-                        }
+                            platform: { type: Type.STRING },
+                            post_text: { type: Type.STRING },
+                            hashtags: { type: Type.ARRAY, items: { type: Type.STRING } }
+                        },
+                        required: ['platform', 'post_text', 'hashtags']
                     }
-                }
-            }
+                },
+            },
         });
-        return JSON.parse(response.text);
+        const jsonStr = response.text.trim();
+        return JSON.parse(jsonStr);
+    } catch (error) {
+        console.error("Error generating social media post with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while generating the social media post.");
+    }
+};
+
+export const generateBusinessNames = async (description: string, keywords: string, style: string): Promise<BusinessName[]> => {
+    const aiClient = getAiClient();
+    try {
+        const response = await aiClient.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Generate 5 creative business names for a company with the following description: "${description}". The naming style should be ${style}. Optional keywords to consider: ${keywords}. For each name, provide a brief rationale.`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            name: { type: Type.STRING },
+                            rationale: { type: Type.STRING }
+                        },
+                        required: ['name', 'rationale']
+                    }
+                },
+            },
+        });
+        const jsonStr = response.text.trim();
+        return JSON.parse(jsonStr);
     } catch (error) {
         console.error("Error generating business names with Gemini API:", error);
         if (error instanceof Error) {
@@ -460,17 +589,20 @@ export const generateBusinessNames = async (description: string, keywords: strin
     }
 };
 
-export const generateEmailCampaign = async (productName: string, productDescription: string, audience: string, campaignType: string, tone: string): Promise<EmailCampaign[]> => {
+export const generateEmailCampaign = async (productName: string, productDescription: string, audience: string, campaignType: string, tone: string, companyProfile: CompanyProfile | null): Promise<EmailCampaign[]> => {
     const aiClient = getAiClient();
-    try {
-        const audienceText = audience.trim() ? ` The target audience is ${audience}.` : '';
-        const prompt = `Generate 3 complete, distinct email variations for a "${campaignType}" campaign about a product/service named "${productName}". 
-        Description: "${productDescription}".${audienceText} The tone should be ${tone}.
-        For each variation, provide a compelling subject line, a short and enticing preview text (under 150 characters), and a full email body formatted in clean, modern HTML. The HTML should be self-contained and use inline styles for maximum compatibility. Include headings, paragraphs, and a clear call-to-action button.`;
+    const profileInfo = companyProfile ? `The email is from ${companyProfile.companyName} (${companyProfile.website}), a company that ${companyProfile.companyDetails}.` : '';
 
+    try {
         const response = await aiClient.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
+            model: "gemini-2.5-flash",
+            contents: `Generate a complete email for a marketing campaign.
+- Campaign Type: ${campaignType}
+- Product: ${productName} (${productDescription})
+- Tone: ${tone}
+- Audience: ${audience}
+- Company Info: ${profileInfo}
+Generate a subject line, a short preview text, and the full email body in clean HTML format. The HTML should be simple, using basic tags like <p>, <h1>, <h2>, <strong>, <a>, etc., and should render well in most email clients. Respond with a JSON array containing one object.`,
             config: {
                 responseMimeType: "application/json",
                 responseSchema: {
@@ -482,12 +614,15 @@ export const generateEmailCampaign = async (productName: string, productDescript
                             previewText: { type: Type.STRING },
                             body: { type: Type.STRING }
                         },
-                        required: ["subject", "previewText", "body"]
-                    }
-                }
-            }
+                        required: ['subject', 'previewText', 'body']
+                    },
+                    minItems: 1,
+                    maxItems: 1
+                },
+            },
         });
-        return JSON.parse(response.text);
+        const jsonStr = response.text.trim();
+        return JSON.parse(jsonStr);
     } catch (error) {
         console.error("Error generating email campaign with Gemini API:", error);
         if (error instanceof Error) {
@@ -497,184 +632,285 @@ export const generateEmailCampaign = async (productName: string, productDescript
     }
 };
 
+export const generateEbookIdea = async (genre: string, audience: string, themes: string, setting: string, protagonist: string): Promise<EbookIdea> => {
+    const aiClient = getAiClient();
+    try {
+        const response = await aiClient.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Generate a creative and unique ebook idea based on the following criteria.
+- Genre: ${genre}
+- Target Audience: ${audience}
+- Key Themes: ${themes || 'Not specified'}
+- Setting: ${setting || 'Not specified'}
+- Protagonist Description: ${protagonist || 'Not specified'}
+Provide a compelling title, a one-sentence logline, a 3-paragraph summary, a brief description of 2-3 main characters, and a list of key themes.`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        title: { type: Type.STRING, description: 'A catchy, genre-appropriate title for the book.' },
+                        logline: { type: Type.STRING, description: 'A single, compelling sentence summarizing the core conflict of the story.' },
+                        summary: { type: Type.STRING, description: 'A 3-paragraph summary of the plot, covering the setup, confrontation, and resolution.' },
+                        characters: {
+                            type: Type.ARRAY,
+                            description: 'A list of 2-3 main characters.',
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    name: { type: Type.STRING, description: "The character's name." },
+                                    description: { type: Type.STRING, description: 'A brief description of the character, including their motivations and role in the story.' }
+                                },
+                                required: ['name', 'description']
+                            }
+                        },
+                        themes: {
+                            type: Type.ARRAY,
+                            description: 'A list of 3-5 key themes explored in the story.',
+                            items: { type: Type.STRING }
+                        }
+                    },
+                    required: ['title', 'logline', 'summary', 'characters', 'themes']
+                },
+            },
+        });
+        const jsonStr = response.text.trim();
+        return JSON.parse(jsonStr);
+    } catch (error) {
+        console.error("Error generating ebook idea with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while generating the ebook idea.");
+    }
+};
 
+
+export const generateBlogTopicIdeas = async (category: string): Promise<string[]> => {
+    const aiClient = getAiClient();
+    try {
+        const response = await aiClient.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Generate 5 interesting blog post topic ideas for the category "${category}".`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                },
+            },
+        });
+        const jsonStr = response.text.trim();
+        return JSON.parse(jsonStr);
+    } catch (error) {
+        console.error("Error generating blog topic ideas with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while generating blog topic ideas.");
+    }
+};
+
+// --- Video Scripting ---
 export const generateVideoScriptFromText = async (textContent: string): Promise<{ scenes: VideoScene[] }> => {
-    const response = await getAiClient().models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: `Based on the following text, create a storyboard script for a short explainer video. Break it down into logical scenes. For each scene, provide a scene number, a short voiceover script (one or two sentences), and a description of the visuals. Text: "${textContent}"`,
-        config: { responseMimeType: "application/json", responseSchema: { type: Type.OBJECT, properties: { scenes: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { sceneNumber: { type: Type.INTEGER }, script: { type: Type.STRING }, visualDescription: { type: Type.STRING } } } } } } },
-    });
-    return JSON.parse(response.text);
-};
-export const generateMusicVideoScript = async (songDescription: string, artistGender: string, songLength: number): Promise<{ scenes: MusicVideoScene[] }> => {
-    const response = await getAiClient().models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: `Create a 5-scene storyboard for a music video. The song is ${songLength} seconds long. The artist is ${artistGender}. The song's theme is: "${songDescription}". For each scene, provide a scene number, timestamp (e.g., 0:00-0:06), camera shot type, a description of the action, and a detailed visual description suitable for an AI video generator.`,
-        config: { responseMimeType: "application/json", responseSchema: { type: Type.OBJECT, properties: { scenes: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { sceneNumber: { type: Type.INTEGER }, timestamp: { type: Type.STRING }, cameraShot: { type: Type.STRING }, action: { type: Type.STRING }, visualDescription: { type: Type.STRING } } } } } } },
-    });
-    return JSON.parse(response.text);
-};
-export const generateLyricsStoryboard = async (lyrics: string): Promise<{ scenes: LyricsScene[] }> => {
-    const response = await getAiClient().models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: `Analyze the following song lyrics and break them down into 4-6 visually distinct scenes for a music video. For each scene, provide:
-        1. 'lyric': The key lyric line(s) for that scene (keep it short).
-        2. 'visualPrompt': A detailed, rich, and creative prompt for an AI image generator to create the scene's main visual.
-        3. 'motionPrompt': A simple, brief description of motion for the video (e.g., 'slow zoom in', 'camera pans left', 'subtle shimmering effect').
-        
-        Lyrics: "${lyrics}"`,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    scenes: {
-                        type: Type.ARRAY,
-                        items: {
-                            type: Type.OBJECT,
-                            properties: {
-                                lyric: { type: Type.STRING },
-                                visualPrompt: { type: Type.STRING },
-                                motionPrompt: { type: Type.STRING }
+    const aiClient = getAiClient();
+    try {
+        const response = await aiClient.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Analyze the following text and break it down into a 5-scene video script for a short explainer video. For each scene, provide a scene number, a short voiceover script, and a detailed description of the visuals that should be generated.
+TEXT: """${textContent}"""`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        scenes: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    sceneNumber: { type: Type.INTEGER },
+                                    script: { type: Type.STRING },
+                                    visualDescription: { type: Type.STRING },
+                                },
+                                required: ['sceneNumber', 'script', 'visualDescription']
                             }
                         }
-                    }
-                }
-            }
-        },
-    });
-    return JSON.parse(response.text);
+                    },
+                    required: ['scenes']
+                },
+            },
+        });
+        const jsonStr = response.text.trim();
+        return JSON.parse(jsonStr);
+    } catch (error) {
+        console.error("Error generating video script with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while generating the video script.");
+    }
 };
+
+export const generateMusicVideoScript = async (songDescription: string, artistGender: string, songLength: number): Promise<{ scenes: MusicVideoScene[] }> => {
+    const aiClient = getAiClient();
+    try {
+        const response = await aiClient.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Create a 5-scene music video storyboard for a song with the following description: "${songDescription}". The artist/protagonist is ${artistGender}. The song is ${songLength} seconds long. For each scene, provide the scene number, a timestamp (e.g., "0:00-0:15"), a camera shot description, a description of the action, and a detailed description of the visuals.`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        scenes: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    sceneNumber: { type: Type.INTEGER },
+                                    timestamp: { type: Type.STRING },
+                                    cameraShot: { type: Type.STRING },
+                                    action: { type: Type.STRING },
+                                    visualDescription: { type: Type.STRING },
+                                },
+                                required: ['sceneNumber', 'timestamp', 'cameraShot', 'action', 'visualDescription']
+                            }
+                        }
+                    },
+                    required: ['scenes']
+                },
+            },
+        });
+        const jsonStr = response.text.trim();
+        return JSON.parse(jsonStr);
+    } catch (error) {
+        console.error("Error generating music video script with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while generating the music video script.");
+    }
+};
+
+export const generateLyricsStoryboard = async (lyrics: string): Promise<{ scenes: LyricsScene[] }> => {
+    const aiClient = getAiClient();
+    try {
+        const response = await aiClient.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Analyze the following song lyrics and create a storyboard for a short animated video. Break the lyrics into key thematic scenes (around 5-8 scenes). For each scene, provide the specific lyric line, a detailed visual prompt for an AI image generator (do not include text in the visual), and a short motion prompt (e.g., 'slow zoom in', 'pan left to right').
+LYRICS: """${lyrics}"""`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        scenes: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    lyric: { type: Type.STRING },
+                                    visualPrompt: { type: Type.STRING },
+                                    motionPrompt: { type: Type.STRING },
+                                },
+                                required: ['lyric', 'visualPrompt', 'motionPrompt']
+                            }
+                        }
+                    },
+                    required: ['scenes']
+                },
+            },
+        });
+        const jsonStr = response.text.trim();
+        return JSON.parse(jsonStr);
+    } catch (error) {
+        console.error("Error generating lyrics storyboard with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while generating the lyrics storyboard.");
+    }
+};
+
+// --- Audio ---
 
 export const generateLipSyncVideo = async (imageUrl: string, audioFile: File): Promise<string> => {
-    try {
-        // Step 1: Transcribe audio to text.
-        const transcribedText = await transcribeAudioFromFile(audioFile);
-        if (!transcribedText || !transcribedText.trim()) {
-            throw new Error("Audio transcription returned empty text. Cannot generate video.");
-        }
-
-        // Step 2: Get audio duration to pass to the video generator.
-        const duration = await new Promise<number>((resolve, reject) => {
-            const audio = new Audio(URL.createObjectURL(audioFile));
-            audio.onloadedmetadata = () => {
-                // Veo has a max duration, clamp it to the app's max setting.
-                resolve(Math.min(audio.duration, 8)); 
-            };
-            audio.onerror = (e) => reject(new Error("Could not determine audio duration."));
-        });
-        
-        // Step 3: Create a prompt for the video generation model.
-        const prompt = `Animate the person in this image to look like they are speaking the following words, with natural mouth movements and facial expressions that match the tone: "${transcribedText}"`;
-
-        // Step 4: Generate the video using the image, new prompt, and duration.
-        // We generate the full video directly, as a preview might not be representative.
-        const videoUrl = await generateVideoFromImage(imageUrl, prompt, Math.ceil(duration), false);
-
-        return videoUrl;
-    } catch (error) {
-        console.error("Error generating lip sync video:", error);
-        if (error instanceof Error) {
-            throw new Error(`Lip Sync Generation Error: ${error.message}`);
-        }
-        throw new Error("An unknown error occurred while generating the lip sync video.");
-    }
+    // NOTE: Gemini does not currently have a direct "lip sync" API. 
+    // This is a placeholder for a feature that would require a different model or service.
+    // For this app, we'll throw an informative error.
+    console.error("generateLipSyncVideo is not implemented with the current Gemini API.");
+    throw new Error("Lip Sync video generation is not supported by the Gemini API at this time.");
 };
 
-// --- Audio Transcription Service ---
-
-/**
- * Converts a File object to a GoogleGenerativeAI.Part object for the API.
- * @param file The audio or video file to convert.
- * @returns A promise that resolves with the Part object.
- */
-const fileToGenerativePart = async (file: File) => {
-  const base64EncodedDataPromise = new Promise<string>((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-    reader.readAsDataURL(file);
-  });
-  return {
-    inlineData: {
-      data: await base64EncodedDataPromise,
-      mimeType: file.type,
-    },
-  };
-};
-
-export const transcribeAudioFromFile = async (audioFile: File): Promise<string> => {
-  const aiClient = getAiClient();
-  try {
-    const audioPart = await fileToGenerativePart(audioFile);
-    const response = await aiClient.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: {
-        parts: [
-          { text: "Transcribe this audio recording." },
-          audioPart
-        ]
-      }
-    });
-    return response.text;
-  } catch (error) {
-    console.error("Error transcribing audio file with Gemini API:", error);
-    if (error instanceof Error) {
-        throw new Error(`Gemini API Error: ${error.message}`);
-    }
-    throw new Error("An unknown error occurred while transcribing the audio file.");
-  }
-};
-
-function encode(bytes: Uint8Array) {
-  let binary = '';
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-function createBlob(data: Float32Array): Blob {
-  const l = data.length;
-  const int16 = new Int16Array(l);
-  for (let i = 0; i < l; i++) {
-    int16[i] = data[i] * 32768;
-  }
-  return {
-    data: encode(new Uint8Array(int16.buffer)),
-    mimeType: 'audio/pcm;rate=16000',
-  };
-}
 
 export const startAudioTranscriptionSession = (callbacks: {
+    onOpen: () => void;
     onTranscriptionUpdate: (chunk: string, isTurnComplete: boolean) => void;
     onError: (error: Error) => void;
     onClose: () => void;
-    onOpen: () => void;
 }) => {
     const aiClient = getAiClient();
+
     const sessionPromise = aiClient.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
         callbacks: {
             onopen: callbacks.onOpen,
             onmessage: (message: LiveServerMessage) => {
-                // The model might send audio responses even if we only care about transcription.
-                // We don't need to process them here.
-                if (message.serverContent?.inputTranscription) {
-                    callbacks.onTranscriptionUpdate(message.serverContent.inputTranscription.text, false);
-                }
-                if (message.serverContent?.turnComplete) {
-                    callbacks.onTranscriptionUpdate('', true);
+                const text = message.serverContent?.inputTranscription?.text;
+                const turnComplete = message.serverContent?.turnComplete;
+                if (text) {
+                    callbacks.onTranscriptionUpdate(text, !!turnComplete);
                 }
             },
-            onerror: (e: ErrorEvent) => callbacks.onError(new Error('Audio session error. Please check your connection and try again.')),
+            onerror: (e: ErrorEvent) => callbacks.onError(new Error(e.message || "An unknown live session error occurred.")),
             onclose: (e: CloseEvent) => callbacks.onClose(),
         },
         config: {
-            responseModalities: [Modality.AUDIO], // This is required by the API
+            responseModalities: [Modality.AUDIO], // Required for live, but we only care about transcription
             inputAudioTranscription: {},
-            systemInstruction: 'You are a highly accurate and fast transcription service. Only transcribe what the user says. Do not respond or have a conversation.',
         },
     });
+
+    const createBlob = (data: Float32Array): Blob => {
+        const l = data.length;
+        const int16 = new Int16Array(l);
+        for (let i = 0; i < l; i++) {
+            int16[i] = data[i] * 32768;
+        }
+        const bytes = new Uint8Array(int16.buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return {
+            data: btoa(binary),
+            mimeType: 'audio/pcm;rate=16000',
+        };
+    };
+
     return { sessionPromise, createBlob };
+};
+
+export const transcribeAudioFromFile = async (audioFile: File): Promise<string> => {
+    const aiClient = getAiClient();
+    try {
+        const { base64Data, mimeType } = await fileToDataUrl(audioFile);
+        const response = await aiClient.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: {
+                parts: [
+                    { text: "Transcribe the following audio file completely and accurately." },
+                    { inlineData: { data: base64Data, mimeType } }
+                ]
+            },
+        });
+        return response.text.trim();
+    } catch (error) {
+        console.error("Error transcribing audio file with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while transcribing the audio file.");
+    }
 };
