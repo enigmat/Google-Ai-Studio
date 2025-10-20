@@ -43,7 +43,7 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ mode, setMode }) => {
       {/* Category: Content & Marketing */}
       <div>
         <h3 className="text-sm font-semibold text-gray-500 mb-2 px-1">Content & Marketing</h3>
-        <div className="grid grid-cols-3 sm:grid-cols-7 gap-1 w-full bg-gray-800 rounded-lg p-1 border border-gray-700">
+        <div className="grid grid-cols-3 sm:grid-cols-8 gap-1 w-full bg-gray-800 rounded-lg p-1 border border-gray-700">
             <ModeButton currentMode={mode} targetMode="logo-generator" setMode={setMode}>Logo</ModeButton>
             <ModeButton currentMode={mode} targetMode="business-name-generator" setMode={setMode}>Business Name</ModeButton>
             <ModeButton currentMode={mode} targetMode="thumbnail-generator" setMode={setMode}>Thumbnail</ModeButton>
@@ -54,19 +54,23 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ mode, setMode }) => {
             <ModeButton currentMode={mode} targetMode="tshirt-mockup" setMode={setMode}>T-shirt Mockup</ModeButton>
             <ModeButton currentMode={mode} targetMode="ugc-ad" setMode={setMode}>UGC Ad</ModeButton>
             <ModeButton currentMode={mode} targetMode="blog-post" setMode={setMode}>Blog Post</ModeButton>
+            <ModeButton currentMode={mode} targetMode="recipe-post" setMode={setMode}>Recipe Post</ModeButton>
             <ModeButton currentMode={mode} targetMode="social-media-post" setMode={setMode}>Social Media</ModeButton>
             <ModeButton currentMode={mode} targetMode="email-campaign" setMode={setMode}>Email Campaign</ModeButton>
             <ModeButton currentMode={mode} targetMode="ebook-idea" setMode={setMode}>Ebook Idea</ModeButton>
+            <ModeButton currentMode={mode} targetMode="book-cover" setMode={setMode}>Book Cover</ModeButton>
+            <ModeButton currentMode={mode} targetMode="book-mockup" setMode={setMode}>Book Mockup</ModeButton>
         </div>
       </div>
       
       {/* Category: Video Tools */}
       <div>
         <h3 className="text-sm font-semibold text-gray-500 mb-2 px-1">Video Tools</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-7 gap-1 w-full bg-gray-800 rounded-lg p-1 border border-gray-700">
+        <div className="grid grid-cols-2 sm:grid-cols-8 gap-1 w-full bg-gray-800 rounded-lg p-1 border border-gray-700">
             <ModeButton currentMode={mode} targetMode="text-to-video" setMode={setMode}>Text-to-Video</ModeButton>
             <ModeButton currentMode={mode} targetMode="video-green-screen" setMode={setMode}>Green Screen</ModeButton>
             <ModeButton currentMode={mode} targetMode="animate-image" setMode={setMode}>Animate Image</ModeButton>
+            <ModeButton currentMode={mode} targetMode="gif-generator" setMode={setMode}>GIF</ModeButton>
             <ModeButton currentMode={mode} targetMode="explainer-video" setMode={setMode}>Explainer Video</ModeButton>
             <ModeButton currentMode={mode} targetMode="music-video" setMode={setMode}>Music Video</ModeButton>
             <ModeButton currentMode={mode} targetMode="lyrics-to-video" setMode={setMode}>Lyrics to Video</ModeButton>

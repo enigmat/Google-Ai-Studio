@@ -185,7 +185,7 @@ export const generateVideoFromPrompt = async (prompt: string, durationSeconds: n
         }
 
         let operation = await aiClient.models.generateVideos({
-            model: 'veo-2.0-generate-001',
+            model: 'veo-3.1-fast-generate-preview',
             prompt: prompt,
             config,
         });
@@ -235,7 +235,7 @@ export const generateVideoFromImage = async (imageUrl: string, prompt: string, d
         }
         
         let operation = await aiClient.models.generateVideos({
-            model: 'veo-2.0-generate-001',
+            model: 'veo-3.1-fast-generate-preview',
             prompt: prompt,
             image: {
                 imageBytes: base64Data,
@@ -471,8 +471,7 @@ export const generateProductScene = async (productUrl: string, scenePrompt: stri
     return imageAction(productUrl, prompt);
 };
 
-export const generateMockup = async (designUrl: string, mockupUrl: string): Promise<string> => {
-    const prompt = `Apply the first provided image (the design) onto the second provided image (the T-shirt mockup). The design should be placed realistically on the chest of the T-shirt, conforming to the fabric's folds, lighting, and shadows.`;
+export const generateMockup = async (designUrl: string, mockupUrl: string, prompt: string): Promise<string> => {
     const aiClient = getAiClient();
     try {
         const { base64Data: designData, mimeType: designMime } = parseDataUrl(designUrl);
@@ -686,17 +685,25 @@ Provide a compelling title, a one-sentence logline, a 3-paragraph summary, a bri
 };
 
 
-export const generateBlogTopicIdeas = async (category: string): Promise<string[]> => {
+export const generateBlogTopicIdeas = async (category: string): Promise<{topic: string, imagePrompt: string}[]> => {
     const aiClient = getAiClient();
     try {
         const response = await aiClient.models.generateContent({
             model: "gemini-2.5-flash",
-            contents: `Generate 5 interesting blog post topic ideas for the category "${category}".`,
+            contents: `Based on current trends for today, generate 5 trending blog post topic ideas for the category "${category}". For each topic, also provide a creative, visually descriptive prompt suitable for generating a header image for the blog post.`,
             config: {
+                tools: [{googleSearch: {}}],
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.ARRAY,
-                    items: { type: Type.STRING }
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            topic: { type: Type.STRING, description: 'The trending blog post topic.' },
+                            imagePrompt: { type: Type.STRING, description: 'A visually descriptive prompt to generate a header image for the topic.' }
+                        },
+                        required: ['topic', 'imagePrompt']
+                    }
                 },
             },
         });
@@ -708,6 +715,40 @@ export const generateBlogTopicIdeas = async (category: string): Promise<string[]
             throw new Error(`Gemini API Error: ${error.message}`);
         }
         throw new Error("An unknown error occurred while generating blog topic ideas.");
+    }
+};
+
+export const generateRecipePost = async (dish: string, cuisine: string, prepTime: string, dietary: string[]): Promise<string> => {
+    const aiClient = getAiClient();
+
+    const dietaryInfo = dietary.length > 0 ? `It should be suitable for the following diets: ${dietary.join(', ')}.` : '';
+    const cuisineInfo = cuisine ? `The cuisine style is ${cuisine}.` : '';
+    const prepTimeInfo = prepTime ? `The total prep and cook time should be ${prepTime}.` : '';
+
+    try {
+        const response = await aiClient.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Write a friendly and engaging blog post for a recipe.
+- The dish is: "${dish}".
+- ${cuisineInfo}
+- ${prepTimeInfo}
+- ${dietaryInfo}
+
+The post should have:
+1. A warm, engaging introduction to the dish.
+2. A list of ingredients under an "Ingredients" heading, formatted as an HTML unordered list (<ul><li>...</li></ul>).
+3. Step-by-step cooking instructions under an "Instructions" heading, formatted as an HTML ordered list (<ol><li>...</li></ol>).
+4. A concluding paragraph with serving suggestions or tips.
+
+Format the entire output as clean, well-structured HTML, using <h1> for the title, <h2> for subheadings, and <p> for paragraphs.`,
+        });
+        return response.text.trim();
+    } catch (error) {
+        console.error("Error generating recipe post with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while generating the recipe post.");
     }
 };
 

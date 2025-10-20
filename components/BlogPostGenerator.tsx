@@ -2,20 +2,26 @@ import React, { useState } from 'react';
 import { BLOG_TONES, BLOG_LENGTHS } from '../constants';
 import { generateBlogTopicIdeas } from '../services/geminiService';
 
+interface TopicIdea {
+  topic: string;
+  imagePrompt: string;
+}
+
 interface BlogPostGeneratorProps {
   onSubmit: (topic: string, tone: string, length: string, audience: string) => void;
+  onGenerateHeader: (imagePrompt: string) => void;
   isLoading: boolean;
 }
 
 const TOPIC_CATEGORIES = ['Business', 'Creative', 'Tech', 'Lifestyle', 'Music'];
 
-const BlogPostGenerator: React.FC<BlogPostGeneratorProps> = ({ onSubmit, isLoading }) => {
+const BlogPostGenerator: React.FC<BlogPostGeneratorProps> = ({ onSubmit, onGenerateHeader, isLoading }) => {
   const [topic, setTopic] = useState('');
   const [tone, setTone] = useState(BLOG_TONES[0]);
   const [length, setLength] = useState(BLOG_LENGTHS[1]);
   const [audience, setAudience] = useState('');
   const [isGeneratingTopics, setIsGeneratingTopics] = useState(false);
-  const [topicIdeas, setTopicIdeas] = useState<string[]>([]);
+  const [topicIdeas, setTopicIdeas] = useState<TopicIdea[]>([]);
   const [topicError, setTopicError] = useState<string | null>(null);
   const [topicCategory, setTopicCategory] = useState(TOPIC_CATEGORIES[0]);
 
@@ -71,7 +77,7 @@ const BlogPostGenerator: React.FC<BlogPostGeneratorProps> = ({ onSubmit, isLoadi
                     ) : (
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.934L13 17.256A1 1 0 0112 18a1 1 0 01-.967-.744L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.934L11 2.744A1 1 0 0112 2z" clipRule="evenodd" /></svg>
                     )}
-                    <span>Get Ideas</span>
+                    <span>Get Trending Ideas</span>
                 </button>
             </div>
         </div>
@@ -90,16 +96,27 @@ const BlogPostGenerator: React.FC<BlogPostGeneratorProps> = ({ onSubmit, isLoadi
       {topicError && <p className="text-red-400 text-sm">{topicError}</p>}
       {topicIdeas.length > 0 && (
           <div className="border-t border-gray-700/50 pt-3 flex flex-col gap-2">
-              <h4 className="text-sm font-semibold text-gray-400">Topic Ideas ({topicCategory}):</h4>
+              <h4 className="text-sm font-semibold text-gray-400">Trending Ideas ({topicCategory}):</h4>
               {topicIdeas.map((idea, i) => (
-                  <button 
-                      key={i}
-                      type="button"
-                      onClick={() => setTopic(idea)}
-                      className="text-left text-sm p-2 bg-gray-800 rounded-md hover:bg-gray-700 text-gray-300 transition-colors"
-                  >
-                      {idea}
-                  </button>
+                  <div key={i} className="flex items-center gap-2 p-2 bg-gray-800 rounded-md">
+                      <p className="flex-grow text-sm text-gray-300">{idea.topic}</p>
+                      <button 
+                        type="button"
+                        onClick={() => setTopic(idea.topic)}
+                        className="flex-shrink-0 text-xs px-2 py-1 bg-gray-700 rounded hover:bg-gray-600"
+                        title="Use this topic"
+                      >
+                        Use Topic
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => onGenerateHeader(idea.imagePrompt)}
+                        className="flex-shrink-0 text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                        title="Generate a header image for this topic"
+                      >
+                        Gen Image
+                      </button>
+                  </div>
               ))}
           </div>
       )}

@@ -1,13 +1,3 @@
-// FIX: This component is unused and depends on a non-existent 'BOOK_COVER_STYLES' constant.
-// The component is stubbed out to resolve the compilation error.
-import React from 'react';
-
-const BookCoverGenerator: React.FC = () => {
-  return null;
-};
-
-export default BookCoverGenerator;
-/*
 import React, { useState } from 'react';
 import { BOOK_COVER_STYLES } from '../constants';
 
@@ -72,4 +62,3 @@ const BookCoverGenerator: React.FC<BookCoverGeneratorProps> = ({ onSubmit, isLoa
 };
 
 export default BookCoverGenerator;
-*/

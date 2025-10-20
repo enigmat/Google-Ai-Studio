@@ -1,76 +1,123 @@
-export type GeneratorMode = 'text-to-image' | 'ugc-ad' | 'text-to-video' | 'animate-image' | 'image-to-prompt' | 'creative-chat' | 'product-studio' | 'tshirt-mockup' | 'blog-post' | 'social-media-post' | 'avatar-generator' | 'image-variations' | 'flyer-generator' | 'explainer-video' | 'logo-generator' | 'thumbnail-generator' | 'video-green-screen' | 'recreate-thumbnail' | 'music-video' | 'title-to-image' | 'lyrics-to-video' | 'audio-to-text' | 'lip-sync' | 'business-name-generator' | 'email-campaign' | 'ebook-idea';
-
-export const EXAMPLE_PROMPTS = [
-  "A majestic lion with a cosmic mane",
-  "Floating islands in a twilight sky",
-  "A cyberpunk city street at night in the rain",
-  "An enchanted forest with glowing mushrooms",
-  "A robot orchestra playing classical music"
-];
+export type GeneratorMode =
+  | 'text-to-image'
+  | 'image-variations'
+  | 'ugc-ad'
+  | 'text-to-video'
+  | 'animate-image'
+  | 'video-green-screen'
+  | 'gif-generator'
+  | 'creative-chat'
+  | 'image-to-prompt'
+  | 'product-studio'
+  | 'tshirt-mockup'
+  | 'blog-post'
+  | 'recipe-post'
+  | 'social-media-post'
+  | 'avatar-generator'
+  | 'flyer-generator'
+  | 'logo-generator'
+  | 'thumbnail-generator'
+  | 'recreate-thumbnail'
+  | 'explainer-video'
+  | 'music-video'
+  | 'title-to-image'
+  | 'lyrics-to-video'
+  | 'audio-to-text'
+  | 'lip-sync'
+  | 'business-name-generator'
+  | 'email-campaign'
+  | 'ebook-idea'
+  | 'book-cover'
+  | 'book-mockup';
 
 export const STYLES = [
-  { name: 'None', promptSuffix: '' },
-  { name: 'Photorealistic', promptSuffix: ', hyperrealistic, photorealistic, 8K HDR, professional photography, sharp focus, detailed' },
-  { name: 'Anime', promptSuffix: ', anime art style, cel shaded, vibrant colors, detailed background, masterpiece, from a high-budget anime film' },
-  { name: 'Watercolor', promptSuffix: ', watercolor painting, soft wash, wet-on-wet technique, paper texture, vibrant colors, artistic' },
-  { name: 'Cyberpunk', promptSuffix: ', cyberpunk aesthetic, neon lighting, futuristic city, dystopian, high-tech, Blade Runner style, cinematic' },
-  { name: 'Fantasy', promptSuffix: ', fantasy art, epic, magical, ethereal lighting, mythical creatures, detailed armor, Lord of the Rings inspired' },
-  { name: '3D Model', promptSuffix: ', 3D model, Blender render, Octane render, high detail, physically-based rendering (PBR), polished' },
-  { name: 'Pixel Art', promptSuffix: ', 16-bit pixel art, detailed, vibrant color palette, retro gaming style, sprite' },
-  { name: 'Minimalist', promptSuffix: ', minimalist, clean lines, simple, elegant, negative space, vector art' },
-  { name: 'Steampunk', promptSuffix: ', steampunk, victorian, gears, cogs, steam-powered, intricate details, brass and copper' },
-  { name: 'Vintage Photo', promptSuffix: ', vintage photograph, 1950s, sepia tone, grainy, faded colors, classic car, retro fashion' },
-  { name: 'Comic Book', promptSuffix: ', comic book art, graphic novel style, bold outlines, halftone dots, vibrant colors, dynamic action' },
-  { name: 'Line Art', promptSuffix: ', line art, black and white, clean lines, simple, elegant, minimalist drawing' },
-  { name: 'Digital Painting', promptSuffix: ', digital painting, masterpiece, concept art, detailed, complex, ArtStation trending' }
-];
-
-// FIX: Added constants for various generator components.
-export const BLOG_TONES = ['Professional', 'Casual', 'Friendly', 'Humorous', 'Informative', 'Witty'];
-export const BLOG_LENGTHS = ['Short (~300 words)', 'Medium (~600 words)', 'Long (~1000 words)'];
-export const BUSINESS_NAME_STYLES = ['Modern', 'Classic', 'Playful', 'One Word', 'Elegant'];
-export const SOCIAL_MEDIA_PLATFORMS = ['Twitter/X', 'Instagram', 'Facebook', 'LinkedIn', 'TikTok', 'Pinterest'];
-export const EMAIL_CAMPAIGN_TYPES = ['Product Launch', 'Newsletter', 'Promotion / Sale', 'Welcome Email'];
-export const EBOOK_GENRES = ['Science Fiction', 'Fantasy', 'Mystery', 'Thriller', 'Romance', 'Horror', 'Historical Fiction', 'Dystopian'];
-export const EBOOK_AUDIENCES = ['Children', 'Young Adult', 'New Adult', 'Adult'];
-export const LOGO_STYLES = ['Minimalist', 'Geometric', 'Mascot', 'Abstract', 'Vintage', 'Modern'];
-export const AVATAR_GENDERS = ['Female', 'Male', 'Non-binary'];
-export const AVATAR_AGES = ['Child', 'Teenager', 'Young Adult', 'Adult', 'Elderly'];
-export const AVATAR_HAIR_STYLES = ['Short and neat', 'Medium-length wavy', 'Long and straight', 'Curly afro', 'Top knot bun', 'Braids', 'Bald'];
-export const AVATAR_COLORS = ['Black', 'Brown', 'Blonde', 'Red', 'Blue', 'Green', 'Purple', 'White', 'Silver'];
-export const AVATAR_ART_STYLES = [
-  { name: 'Photorealistic', value: 'hyperrealistic, photorealistic, 8K HDR, professional photography, sharp focus' },
-  { name: 'Digital Painting', value: 'digital painting, concept art, detailed, ArtStation trending' },
-  { name: 'Anime', value: 'anime art style, cel shaded, vibrant colors, from a high-budget anime film' },
-  { name: '3D Character', value: '3D model, Blender render, character design, polished, Pixar style' },
-  { name: 'Comic Book', value: 'comic book art, graphic novel style, bold outlines, halftone dots' },
+    { name: 'None', promptSuffix: '' },
+    { name: 'Cinematic', promptSuffix: ', cinematic, dramatic lighting, epic composition, professional color grading' },
+    { name: 'Photorealistic', promptSuffix: ', photorealistic, 8k, sharp focus, high quality photo' },
+    { name: 'Anime', promptSuffix: ', anime style, vibrant colors, detailed line work, studio ghibli inspired' },
+    { name: 'Watercolor', promptSuffix: ', watercolor painting, soft edges, blended colors, paper texture' },
+    { name: '3D Render', promptSuffix: ', 3d render, octane render, trending on artstation, hyper-detailed' },
+    { name: 'Pixel Art', promptSuffix: ', pixel art, 16-bit, detailed, vibrant, retro video game style' },
+    { name: 'Low Poly', promptSuffix: ', low poly, isometric, simple shapes, clean, minimalist' },
 ];
 
 export const ASPECT_RATIOS = ['1:1', '16:9', '9:16'] as const;
 
+export const EXAMPLE_PROMPTS = [
+  'A raccoon in a library, wearing a monocle',
+  'A neon-lit cyberpunk city street at night, raining',
+  'A majestic castle floating in the clouds, fantasy',
+  'A cute robot tending to a small garden on a spaceship',
+];
+
 export const VARIATION_COUNTS = [4, 8, 12] as const;
 
 export const VIDEO_STYLES = [
-  { name: 'None', promptSuffix: '' },
-  { name: 'Cinematic', promptSuffix: ', cinematic, dramatic lighting, epic score, high contrast, wide-angle shot' },
-  { name: 'Cartoonish', promptSuffix: ', cartoon style, vibrant colors, exaggerated motion, 2D animation look, stylised' },
-  { name: 'Documentary', promptSuffix: ', documentary style, handheld camera feel, natural lighting, realistic motion' },
-  { name: 'Abstract', promptSuffix: ', abstract, surreal, non-representational, fluid motion, experimental visuals' },
+    { name: 'None', promptSuffix: '' },
+    { name: 'Cinematic', promptSuffix: ', cinematic, epic, dramatic lighting, professional color grading, high detail' },
+    { name: 'Vintage Film', promptSuffix: ', vintage film, 8mm, grainy, retro, film scratches, warm tones' },
+    { name: 'Black & White', promptSuffix: ', black and white, monochrome, high contrast, dramatic shadows' },
+    { name: 'Time-lapse', promptSuffix: ', time-lapse, fast motion, clouds moving quickly, city lights streaking' },
+    { name: 'Slow Motion', promptSuffix: ', slow motion, ultra slow-mo, 1000fps, dramatic, detailed movement' },
 ];
 
+// For Avatar Generator
+export const AVATAR_GENDERS = ['Male', 'Female', 'Non-binary'];
+export const AVATAR_AGES = ['Child', 'Teenager', 'Young Adult', 'Adult', 'Elderly'];
+export const AVATAR_HAIR_STYLES = ['Short and neat', 'Long and flowing', 'Curly and wild', 'Braided', 'Top-knot', 'Mohawk'];
+export const AVATAR_COLORS = ['Black', 'Brown', 'Blonde', 'Red', 'Blue', 'Green', 'Purple', 'Pink', 'White', 'Silver'];
+export const AVATAR_ART_STYLES = [
+  { name: 'Photorealistic', value: 'photorealistic, detailed skin texture, sharp focus' },
+  { name: 'Anime', value: 'anime style, vibrant colors, cell shading' },
+  { name: 'Disney Pixar', value: 'disney pixar style, 3d render, friendly and expressive' },
+  { name: 'Cyberpunk', value: 'cyberpunk style, neon lights, futuristic clothing, cybernetic implants' },
+  { name: 'Fantasy', value: 'fantasy style, elven features, intricate armor, magical glow' },
+];
+
+// For Flyer Generator
 export const FLYER_STYLES = ['Modern & Clean', 'Bold & Energetic', 'Elegant & Minimalist', 'Retro & Funky', 'Corporate & Professional'];
 
+// For Logo Generator
+export const LOGO_STYLES = ['Minimalist', 'Geometric', 'Mascot', 'Abstract', 'Lettermark', 'Emblem'];
+
+// For Thumbnail Generator
 export const THUMBNAIL_STYLES = [
-  { name: 'Bold & Punchy', description: 'High contrast, dramatic lighting, and dynamic text. Great for reaction videos and challenges.', promptSuffix: 'dramatic lighting, high contrast, bold sans-serif fonts, dynamic composition' },
-  { name: 'Clean & Minimalist', description: 'Simple, elegant design with lots of clean space. Ideal for educational or business content.', promptSuffix: 'minimalist design, sans-serif fonts, generous white space, clean lines, simple color palette' },
-  { name: 'Gaming', description: 'Vibrant, energetic, and action-packed. Perfect for gameplay videos and live streams.', promptSuffix: 'vibrant neon colors, futuristic fonts, energetic, action-packed scene' },
-  { name: 'Tech Review', description: 'Modern, professional, and sleek. Suitable for product reviews and tech tutorials.', promptSuffix: 'clean layout, modern fonts, professional, high-tech aesthetic, blue and silver color scheme' },
-  { name: 'Vlog', description: 'Friendly and approachable style. Often features a person and casual text.', promptSuffix: 'friendly and approachable style, handwritten or casual fonts, a realistic and inviting scene' },
-  { name: 'Documentary', description: 'Serious, cinematic, and informative. Uses high-quality imagery and formal text.', promptSuffix: 'serious and informative tone, serif fonts, cinematic lighting, realistic imagery' }
+    { name: 'Bold', description: 'High contrast, big text, bright colors.', promptSuffix: 'bold sans-serif font, high contrast, vibrant colors, clickbait, eye-catching' },
+    { name: 'Minimalist', description: 'Clean, simple, lots of negative space.', promptSuffix: 'minimalist design, clean san-serif font, lots of negative space' },
+    { name: 'Gaming', description: 'Energetic, flashy, often with characters.', promptSuffix: 'gaming thumbnail style, flashy effects, neon colors, action-packed' },
 ];
 
+// For T-shirt Mockup Generator
 export const TSHIRT_MOCKUPS = [
-  { id: 'white', name: 'White T-Shirt', url: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImEiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMCUiIHkyPSIxMDAlIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMDAwIiBzdG9wLW9wYWNpdHk9Ii4xIi8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLW9wYWNpdHk9IjAiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNNTAgMjBjMCAyNSAxMDAgMjUgMTAwIDBMMTYwIDMwbDIwIDEwLTEwIDE0MEgzMEwyMCA0MGwyMC0xMHoiLz48cGF0aCBmaWxsPSJub25lIiBzdHJva2U9IiNFMUUwRTAiIHN0cm9rZS11aWR0aD0iNCIgZD0iTTc1IDIwYzAgMjAgNTAgMjAgNTAgMCIvPjxwYXRoIGZpbGw9InVybCgjYSkiIGQ9Ik01MCAyMGMwIDI1IDEwMCAyNSAxMDAgMEwxNjAgMzBsMjAgMTAtMTAgMTQwSDMwTDIwIDQwbDIwLTEweiIvPjxwYXRoIGZpbGw9IiMwMDAiIG9wYWNpdHk9Ii4wNSIgZD0iTTMwIDE4MGMxMC0xMCAzMC01IDQwIDBsLTIwIDEweiIvPjxwYXRoIGZpbGw9IiMwMDAiIG9wYWNpdHk9Ii4wNSIgZD0iTTE3MCAxODBjLTEwLTEwLTMwLTUtNDAgMGwyMCAxMHoiLz48L3N2Zz4=' },
-  { id: 'black', name: 'Black T-Shirt', url: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImEiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiNGRkYiIHN0b3Atb3BhY2l0eT0iLjEiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3Atb3BhY2l0eT0iMCIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxwYXRoIGZpbGw9IiMyMTIxMjEiIGQ9Ik01MCAyMGMwIDI1IDEwMCAyNSAxMDAgMEwxNjAgMzBsMjAgMTAtMTAgMTQwSDMwTDIwIDQwbDIwLTEweiIvPjxwYXRoIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzQyNDI0MiIgc3Ryb2tlLXdpZHRoPSI0IiBkPSJNNzUgMjBjMCAyMCA1MCAyMCA1MCAwIi8+PHBhdGggZmlsbD0idXJsKCNhKSIgZD0iTTUwIDIwYzAgMjUgMTAwIDI1IDEwMCAwTDE2MCAzMGwyMCAxMC0xMCAxNDBIMzBMMjAgNDBsMjAtMTB6Ii8+PC9zdmc+' },
-  { id: 'grey', name: 'Grey T-Shirt', url: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImEiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiNGRkYiIHN0b3Atb3BhY2l0eT0iLjEiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3Atb3BhY2l0eT0iMCIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxwYXRoIGZpbGw9IiNhMGEwYTAiIGQ9Ik01MCAyMGMwIDI1IDEwMCAyNSAxMDAgMEwxNjAgMzBsMjAgMTAtMTAgMTQwSDMwTDIwIDQwbDIwLTEweiIvPjxwYXRoIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2M1YzVjNSIgc3Ryb2tlLXdpZHRoPSI0IiBkPSJNNzUgMjBjMCAyMCA1MCAyMCA1MCAwIi8+PHBhdGggZmlsbD0idXJsKCNhKSIgZD0iTTUwIDIwYzAgMjUgMTAwIDI1IDEwMCAwTDE2MCAzMGwyMCAxMC0xMCAxNDBIMzBMMjAgNDBsMjAtMTB6Ii8+PC9zdmc+' },
+    { id: 'black', name: 'Black T-shirt', url: 'https://storage.googleapis.com/gemini-ui-params/prompter/mockup_black.png' },
+    { id: 'white', name: 'White T-shirt', url: 'https://storage.googleapis.com/gemini-ui-params/prompter/mockup_white.png' },
+    { id: 'heather', name: 'Heather Grey T-shirt', url: 'https://storage.googleapis.com/gemini-ui-params/prompter/mockup_heather.png' },
 ];
+
+// For Book Mockup Generator
+export const BOOK_MOCKUPS = [
+    { id: 'paperback-front', name: 'Paperback', url: 'https://storage.googleapis.com/gemini-ui-params/prompter/book_paperback_front.png' },
+    { id: 'hardcover-angle', name: 'Hardcover', url: 'https://storage.googleapis.com/gemini-ui-params/prompter/book_hardcover_angle.png' },
+    { id: 'paperback-angle-shadow', name: 'Paperback Angle', url: 'https://storage.googleapis.com/gemini-ui-params/prompter/book_paperback_angle_shadow.png' },
+    { id: 'hardcover-bar', name: 'Hardcover 3D', url: 'https://storage.googleapis.com/gemini-ui-params/prompter/book_hardcover_bar.png' },
+];
+
+// For Blog Post Generator
+export const BLOG_TONES = ['Professional', 'Casual', 'Humorous', 'Informative', 'Inspirational', 'Sarcastic'];
+export const BLOG_LENGTHS = ['Short (200 words)', 'Medium (500 words)', 'Long (1000 words)'];
+
+// For Social Media Post Generator
+export const SOCIAL_MEDIA_PLATFORMS = ['Twitter/X', 'LinkedIn', 'Instagram', 'Facebook', 'TikTok'];
+
+// For Business Name Generator
+export const BUSINESS_NAME_STYLES = ['Modern', 'Classic', 'Playful', 'Descriptive', 'Abstract'];
+
+// For Email Campaign Generator
+export const EMAIL_CAMPAIGN_TYPES = ['Product Launch', 'Promotional Sale', 'Welcome Email', 'Newsletter Update', 'Re-engagement'];
+
+// For Ebook Idea Generator
+export const EBOOK_GENRES = ['Fantasy', 'Science Fiction', 'Mystery', 'Thriller', 'Romance', 'Horror', 'Young Adult', 'Historical Fiction'];
+export const EBOOK_AUDIENCES = ['Children', 'Young Adults', 'New Adults', 'Adults'];
+
+// For Book Cover Generator
+export const BOOK_COVER_STYLES = ['Photorealistic', 'Minimalist', 'Illustrated', 'Vintage', 'Typographic', 'Fantasy Painting'];

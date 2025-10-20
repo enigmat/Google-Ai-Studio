@@ -100,8 +100,13 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
   ],
   'blog-post': [
     "Be specific with your topic for a more focused article.",
+    "Try the 'Get Trending Ideas' button to find popular topics for today!",
     "Choosing the right 'Tone of Voice' can make your post resonate with your audience.",
-    "Defining a 'Target Audience' helps me tailor the language and complexity.",
+  ],
+  'recipe-post': [
+    "Let me know the name of the dish you'd like to make!",
+    "I can accommodate dietary needs like vegetarian, vegan, or gluten-free.",
+    "After generating the recipe, click 'Generate Header Image' to create a delicious photo of your dish!",
   ],
   'social-media-post': [
     "Select the right platform! The AI tailors the post length and style for Twitter/X, LinkedIn, or Instagram.",
@@ -133,6 +138,23 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
     "Combine different genres and themes for a unique story idea!",
     "The 'Protagonist' field helps you define your main character from the start.",
     "Click 'Generate Cover Art' on your idea to visualize the book!",
+  ],
+  // FIX: Add missing 'book-cover' property to the MODE_TIPS object to satisfy the Record type.
+  'book-cover': [
+    "A detailed synopsis with keywords about the mood and genre will create a more powerful cover.",
+    "The AI generates the artwork only. You can add the title and author name later in an image editor.",
+    "Experiment with different artistic styles like 'Photorealistic' or 'Fantasy Painting' to match your book's tone.",
+  ],
+  'book-mockup': [
+    "Upload a cover design with a 9:16 aspect ratio for the best fit.",
+    "The AI will realistically wrap your flat design onto the 3D book shape.",
+    "Use this to create promotional images for your book launch!",
+  ],
+  // FIX: Added missing 'gif-generator' property to the MODE_TIPS object.
+  'gif-generator': [
+    "Describe an action that would look good in a loop, like a dancing cat or a spinning logo.",
+    "The AI generates a short, looping video. You can download it as an MP4 and convert it to a GIF using an online tool.",
+    "Adding 'looping animation' or 'animated GIF' to your prompt can help guide the style."
   ],
   // FIX: Added missing 'audio-to-text' mode to satisfy the Record<GeneratorMode, string[]> type.
   'audio-to-text': [

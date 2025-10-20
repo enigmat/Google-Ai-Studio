@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 // FIX: Added all missing function and type imports from geminiService to resolve compilation errors.
-import { generateImageFromPrompt, enhancePrompt, imageAction, generateImageFromReference, generateVideoFromPrompt, generateVideoFromImage, SocialMediaPost, VideoScene, MusicVideoScene, generateImageMetadata, getPromptInspiration, generatePromptFromImage, generateUgcProductAd, generateProductScene, generateMockup, generateBlogPost, generateSocialMediaPost, generateVideoScriptFromText, generateMusicVideoScript, generateLyricsStoryboard, LyricsScene, generateLipSyncVideo, BusinessName, generateBusinessNames, EmailCampaign, generateEmailCampaign, CompanyProfile, EbookIdea, generateEbookIdea } from './services/geminiService';
+import { generateImageFromPrompt, enhancePrompt, imageAction, generateImageFromReference, generateVideoFromPrompt, generateVideoFromImage, SocialMediaPost, VideoScene, MusicVideoScene, generateImageMetadata, getPromptInspiration, generatePromptFromImage, generateUgcProductAd, generateProductScene, generateMockup, generateBlogPost, generateSocialMediaPost, generateVideoScriptFromText, generateMusicVideoScript, generateLyricsStoryboard, LyricsScene, generateLipSyncVideo, BusinessName, generateBusinessNames, EmailCampaign, generateEmailCampaign, CompanyProfile, EbookIdea, generateEbookIdea, generateRecipePost, generateBlogTopicIdeas } from './services/geminiService';
 import { saveImageToAirtable, AirtableConfig, getRandomPromptFromAirtable, getPromptsFromAirtable, updateAirtableRecord } from './services/airtableService';
 import Header from './components/Header';
 import PromptInput from './components/PromptInput';
@@ -58,6 +58,10 @@ import { TTSSettingsProvider } from './contexts/TTSSettingsContext';
 import TTSSettingsModal from './components/TTSSettingsModal';
 import EbookIdeaGenerator from './components/EbookIdeaGenerator';
 import EbookIdeaDisplay from './components/EbookIdeaDisplay';
+import BookCoverGenerator from './components/BookCoverGenerator';
+import BookMockupGenerator from './components/BookMockupGenerator';
+import GifGenerator from './components/GifGenerator';
+import RecipePostGenerator from './components/RecipePostGenerator';
 
 
 type AspectRatio = typeof ASPECT_RATIOS[number];
@@ -554,10 +558,10 @@ const AppContent: React.FC = () => {
   };
   
   const handleSetMode = (newMode: GeneratorMode) => {
-    const isNewModeTextual = ['blog-post', 'social-media-post', 'email-campaign', 'ebook-idea'].includes(newMode);
-    const isNewModeVideo = newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'video-green-screen' || newMode === 'lyrics-to-video' || newMode === 'lip-sync';
+    const isNewModeTextual = ['blog-post', 'social-media-post', 'email-campaign', 'ebook-idea', 'recipe-post'].includes(newMode);
+    const isNewModeVideo = newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'video-green-screen' || newMode === 'lyrics-to-video' || newMode === 'lip-sync' || newMode === 'gif-generator';
     
-    if (isNewModeTextual || isNewModeVideo || ['product-studio', 'tshirt-mockup', 'avatar-generator', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'music-video', 'title-to-image', 'audio-to-text', 'business-name-generator'].includes(newMode)) {
+    if (isNewModeTextual || isNewModeVideo || ['product-studio', 'tshirt-mockup', 'avatar-generator', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'music-video', 'title-to-image', 'audio-to-text', 'business-name-generator', 'book-cover', 'book-mockup'].includes(newMode)) {
       setImageUrls(null);
       setGeneratedImagesData([]);
     }
@@ -591,13 +595,13 @@ const AppContent: React.FC = () => {
       setIsRecording(false);
     }
 
-    if (newMode === 'avatar-generator' || newMode === 'flyer-generator' || newMode === 'title-to-image') {
+    if (newMode === 'avatar-generator' || newMode === 'flyer-generator' || newMode === 'title-to-image' || newMode === 'book-cover' || newMode === 'book-mockup') {
       setAspectRatio('9:16');
     }
     if (newMode === 'logo-generator' || newMode === 'tshirt-mockup') {
         setAspectRatio('1:1');
     }
-    if (newMode === 'thumbnail-generator' || newMode === 'recreate-thumbnail' || newMode === 'lyrics-to-video' || newMode === 'lip-sync') {
+    if (newMode === 'thumbnail-generator' || newMode === 'recreate-thumbnail' || newMode === 'lyrics-to-video' || newMode === 'lip-sync' || newMode === 'gif-generator') {
         setAspectRatio('16:9');
     }
     if (newMode !== 'animate-image') {
@@ -789,13 +793,46 @@ const AppContent: React.FC = () => {
     setLyricsVideoStoryboard(null);
 
     const metadataPrompt = `T-shirt mockup with user-provided design.`;
+    const generationPrompt = `Apply the first provided image (the design) onto the second provided image (the T-shirt mockup). The design should be placed realistically on the chest of the T-shirt, conforming to the fabric's folds, lighting, and shadows.`;
 
     try {
-        const resultUrl = await generateMockup(designUrl, mockupUrl);
+        const resultUrl = await generateMockup(designUrl, mockupUrl, generationPrompt);
         handleSuccessfulGeneration([resultUrl], metadataPrompt);
     } catch (e: unknown) {
         const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
         setError(`Failed to generate mockup: ${message}`);
+        console.error(e);
+    } finally {
+        setIsLoading(false);
+        setPromptBeforeEnhance(null);
+    }
+  }, [handleSuccessfulGeneration]);
+
+  const handleGenerateBookMockup = useCallback(async (designUrl: string, mockupUrl: string) => {
+    setIsLoading(true);
+    setError(null);
+    setImageUrls(null);
+    setGeneratedImagesData([]);
+    setFinalVideoUrl(null);
+    setPreviewVideoUrl(null);
+    setBlogPostContent(null);
+    setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
+    setEbookIdea(null);
+    setVideoStoryboard(null);
+    setMusicVideoStoryboard(null);
+    setLyricsVideoStoryboard(null);
+
+    const metadataPrompt = `Book mockup with user-provided design.`;
+    const generationPrompt = `Apply the first provided image (the book cover design) onto the second provided image (the book mockup). The design should be placed realistically onto the book cover area, conforming to the book's shape, perspective, lighting, and shadows.`;
+
+    try {
+        const resultUrl = await generateMockup(designUrl, mockupUrl, generationPrompt);
+        handleSuccessfulGeneration([resultUrl], metadataPrompt);
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+        setError(`Failed to generate book mockup: ${message}`);
         console.error(e);
     } finally {
         setIsLoading(false);
@@ -852,6 +889,44 @@ const AppContent: React.FC = () => {
       setLoading(false);
     }
   }, [videoPrompt, videoDuration, videoStyle, mode]);
+
+  const handleGenerateGif = useCallback(async () => {
+    if (!videoPrompt.trim()) {
+        setError('Please enter a prompt for the GIF.');
+        return;
+    }
+    setIsLoading(true);
+    setError(null);
+    setImageUrls(null);
+    setGeneratedImagesData([]);
+    setFinalVideoUrl(null);
+    setPreviewVideoUrl(null);
+    setBlogPostContent(null);
+    setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
+    setEbookIdea(null);
+    setGroundingSources(null);
+    setInspirationPrompts([]);
+    setVideoStoryboard(null);
+    setMusicVideoStoryboard(null);
+    setLyricsVideoStoryboard(null);
+
+    const style = VIDEO_STYLES.find(s => s.name === videoStyle);
+    let finalPrompt = style ? `${videoPrompt.trim()}${style.promptSuffix}` : videoPrompt.trim();
+    finalPrompt += ', short looping video, animated GIF style';
+
+    try {
+        const resultUrl = await generateVideoFromPrompt(finalPrompt, 2, true);
+        setFinalVideoUrl(resultUrl);
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+        setError(`Failed to generate GIF: ${message}`);
+        console.error(e);
+    } finally {
+        setIsLoading(false);
+    }
+  }, [videoPrompt, videoStyle]);
 
   const handleGenerateVideoFromImage = useCallback(async (imageUrl: string, motionPrompt: string, isPreview: boolean) => {
     const setLoading = isPreview ? setIsPreviewLoading : setIsLoading;
@@ -1152,6 +1227,34 @@ const AppContent: React.FC = () => {
     }
   }, []);
 
+  const handleGenerateRecipePost = useCallback(async (dish: string, cuisine: string, prepTime: string, dietary: string[]) => {
+    setIsLoading(true);
+    setError(null);
+    setBlogPostContent(null);
+    setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
+    setEbookIdea(null);
+    setImageUrls(null);
+    setGeneratedImagesData([]);
+    setFinalVideoUrl(null);
+    setPreviewVideoUrl(null);
+    setVideoStoryboard(null);
+    setMusicVideoStoryboard(null);
+    setLyricsVideoStoryboard(null);
+    
+    try {
+      const content = await generateRecipePost(dish, cuisine, prepTime, dietary);
+      setBlogPostContent(content);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+      setError(`Failed to generate recipe post: ${message}`);
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const handleGenerateSocialMediaPost = useCallback(async (topic: string, platform: string, tone: string, audience: string, includeHashtags: boolean, includeEmojis: boolean) => {
     setIsLoading(true);
     setError(null);
@@ -1274,6 +1377,39 @@ const AppContent: React.FC = () => {
     }
   }, []);
 
+  const handleGenerateBookCover = useCallback(async (title: string, author: string, synopsis: string, style: string) => {
+      setIsLoading(true);
+      setError(null);
+      setImageUrls(null);
+      setGeneratedImagesData([]);
+      setFinalVideoUrl(null);
+      setPreviewVideoUrl(null);
+      setBlogPostContent(null);
+      setSocialMediaPosts(null);
+      setBusinessNames(null);
+      setEmailCampaigns(null);
+      setEbookIdea(null);
+      setGroundingSources(null);
+      setInspirationPrompts([]);
+      setVideoStoryboard(null);
+      setMusicVideoStoryboard(null);
+      setLyricsVideoStoryboard(null);
+
+      const fullPrompt = `Visually stunning book cover art for a book titled "${title}". ${author ? `The author is "${author}".` : ''} The story is about: "${synopsis}". The artistic style should be: ${style}. Do NOT include any text, letters, or words on the cover. Focus on creating a powerful, evocative image that represents the themes of the book.`;
+      const negativePrompt = 'text, letters, words, font, signature, watermark, blurry text, unreadable fonts, author name, title';
+
+      try {
+          const generatedImageUrls = await generateImageFromPrompt(fullPrompt, 1, '9:16', negativePrompt);
+          handleSuccessfulGeneration(generatedImageUrls, fullPrompt);
+      } catch (e: unknown) {
+          const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+          setError(`Failed to generate book cover: ${message}`);
+      } finally {
+          setIsLoading(false);
+          setPromptBeforeEnhance(null);
+      }
+  }, [handleSuccessfulGeneration]);
+
   const handleGenerateImageForPost = useCallback((postText: string, platform: string) => {
     const newPrompt = `A visually appealing, high-quality image for a social media post about: "${postText}". The style should be modern, engaging, and suitable for ${platform}.`;
     
@@ -1323,6 +1459,20 @@ const AppContent: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     showToast('Prompt for header image has been set!', 'success');
   }, [blogPostContent]);
+
+  const handleGenerateImageFromTopicIdea = useCallback((imagePrompt: string) => {
+    setMode('text-to-image');
+    setAspectRatio('16:9');
+    setPrompt(imagePrompt);
+    setPromptBeforeEnhance(null);
+    setInspirationPrompts([]);
+    setGroundingSources(null);
+    setImageUrls(null);
+    setGeneratedImagesData([]);
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    showToast('Prompt for header image has been set!', 'success');
+  }, []);
   
   const handleGenerateCoverForEbook = useCallback((title: string, summary: string) => {
     const newPrompt = `A visually stunning book cover for a story titled "${title}". The story is about: "${summary}". Do NOT include any text, letters, or words. The style should be cinematic and evocative, suitable for the book's genre.`;
@@ -1768,9 +1918,9 @@ ${info ? `- Additional Info: "${info}"` : ''}
   }, []);
 
   const isAnyLoading = isLoading || isPreviewLoading || isEnhancing || isInspiring || isFetchingFromAirtable;
-  const isImageDisplayMode = ['text-to-image', 'image-variations', 'ugc-ad', 'product-studio', 'tshirt-mockup', 'avatar-generator', 'creative-chat', 'image-to-prompt', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'title-to-image'].includes(mode);
-  const isVideoDisplayMode = ['text-to-video', 'animate-image', 'video-green-screen', 'lip-sync'].includes(mode);
-  const isTextDisplayMode = ['blog-post', 'social-media-post', 'email-campaign', 'ebook-idea'].includes(mode);
+  const isImageDisplayMode = ['text-to-image', 'image-variations', 'ugc-ad', 'product-studio', 'tshirt-mockup', 'avatar-generator', 'creative-chat', 'image-to-prompt', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'title-to-image', 'book-cover', 'book-mockup'].includes(mode);
+  const isVideoDisplayMode = ['text-to-video', 'animate-image', 'video-green-screen', 'lip-sync', 'gif-generator'].includes(mode);
+  const isTextDisplayMode = ['blog-post', 'social-media-post', 'email-campaign', 'ebook-idea', 'recipe-post'].includes(mode);
   const isBusinessNameDisplayMode = mode === 'business-name-generator';
   const isMusicVideoDisplayMode = mode === 'music-video';
   const isLyricsVideoDisplayMode = mode === 'lyrics-to-video';
@@ -1885,6 +2035,20 @@ ${info ? `- Additional Info: "${info}"` : ''}
               </>
             )}
 
+            {mode === 'book-cover' && (
+              <>
+                <h2 className="text-xl font-bold text-indigo-400">Book Cover Generator</h2>
+                <BookCoverGenerator onSubmit={handleGenerateBookCover} isLoading={isLoading} />
+              </>
+            )}
+
+            {mode === 'book-mockup' && (
+              <>
+                <h2 className="text-xl font-bold text-indigo-400">Book Mockup Generator</h2>
+                <BookMockupGenerator onSubmit={handleGenerateBookMockup} isLoading={isLoading} />
+              </>
+            )}
+
             {mode === 'thumbnail-generator' && (
                 <>
                   <h2 className="text-xl font-bold text-indigo-400">YouTube Thumbnail Generator</h2>
@@ -1950,7 +2114,14 @@ ${info ? `- Additional Info: "${info}"` : ''}
             {mode === 'blog-post' && (
               <>
                 <h2 className="text-xl font-bold text-indigo-400">Blog Post Generator</h2>
-                <BlogPostGenerator onSubmit={handleGenerateBlogPost} isLoading={isLoading} />
+                <BlogPostGenerator onSubmit={handleGenerateBlogPost} onGenerateHeader={handleGenerateImageFromTopicIdea} isLoading={isLoading} />
+              </>
+            )}
+
+            {mode === 'recipe-post' && (
+              <>
+                <h2 className="text-xl font-bold text-indigo-400">Recipe Post Generator</h2>
+                <RecipePostGenerator onSubmit={handleGenerateRecipePost} isLoading={isLoading} />
               </>
             )}
             
@@ -2022,6 +2193,22 @@ ${info ? `- Additional Info: "${info}"` : ''}
               </div>
             )}
             
+            {mode === 'gif-generator' && (
+              <>
+                <h2 className="text-xl font-bold text-indigo-400">GIF Generator</h2>
+                <GifGenerator 
+                  prompt={videoPrompt}
+                  setPrompt={setVideoPrompt}
+                  onSubmit={handleGenerateGif}
+                  onEnhance={() => handleEnhance(videoPrompt, setVideoPrompt)}
+                  isEnhancing={isEnhancing}
+                  isLoading={isLoading}
+                />
+                {groundingSources && <GroundingSourcesDisplay sources={groundingSources} />}
+                <VideoStyleSelector selectedStyle={videoStyle} setSelectedStyle={setVideoStyle} isLoading={isAnyLoading} />
+              </>
+            )}
+
             {mode === 'explainer-video' && (
               <>
                 <h2 className="text-xl font-bold text-indigo-400">Explainer Video Generator</h2>
@@ -2093,11 +2280,12 @@ ${info ? `- Additional Info: "${info}"` : ''}
                 finalVideoUrl={finalVideoUrl}
                 isLoading={isLoading}
                 isPreviewLoading={isPreviewLoading}
+                mode={mode}
               />
             )}
             {isTextDisplayMode && (
               <>
-                {mode === 'blog-post' && <BlogPostDisplay content={blogPostContent} isLoading={isLoading} onGenerateHeaderClick={handleGenerateHeaderImage} />}
+                {(mode === 'blog-post' || mode === 'recipe-post') && <BlogPostDisplay content={blogPostContent} isLoading={isLoading} onGenerateHeaderClick={handleGenerateHeaderImage} />}
                 {mode === 'social-media-post' && <SocialMediaPostDisplay posts={socialMediaPosts} isLoading={isLoading} onGenerateImageClick={handleGenerateImageForPost} />}
                 {mode === 'email-campaign' && <EmailCampaignDisplay campaigns={emailCampaigns} isLoading={isLoading} />}
                 {mode === 'ebook-idea' && <EbookIdeaDisplay idea={ebookIdea} isLoading={isLoading} onGenerateCoverClick={handleGenerateCoverForEbook} />}

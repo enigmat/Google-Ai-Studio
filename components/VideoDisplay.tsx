@@ -1,14 +1,16 @@
 import React, { useRef, useState, useEffect } from 'react';
 import Loader from './Loader';
+import { GeneratorMode } from '../constants';
 
 interface VideoDisplayProps {
   previewVideoUrl: string | null;
   finalVideoUrl: string | null;
   isLoading: boolean;
   isPreviewLoading: boolean;
+  mode?: GeneratorMode;
 }
 
-const VideoDisplay: React.FC<VideoDisplayProps> = ({ previewVideoUrl, finalVideoUrl, isLoading, isPreviewLoading }) => {
+const VideoDisplay: React.FC<VideoDisplayProps> = ({ previewVideoUrl, finalVideoUrl, isLoading, isPreviewLoading, mode }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLooping, setIsLooping] = useState(true);
   const [playbackRate, setPlaybackRate] = useState(1);
@@ -31,6 +33,7 @@ const VideoDisplay: React.FC<VideoDisplayProps> = ({ previewVideoUrl, finalVideo
   const isCurrentlyLoading = isLoading || isPreviewLoading;
   const videoToShow = finalVideoUrl || previewVideoUrl;
   const isShowingPreview = !finalVideoUrl && !!previewVideoUrl;
+  const isGifMode = mode === 'gif-generator';
 
   useEffect(() => {
     // Reset playback speed when the video source changes
@@ -49,7 +52,7 @@ const VideoDisplay: React.FC<VideoDisplayProps> = ({ previewVideoUrl, finalVideo
   if (isPreviewLoading) {
     loadingMessage = 'Generating a quick preview...';
   } else if (isLoading) {
-    loadingMessage = 'Rendering the final cut...';
+    loadingMessage = isGifMode ? 'Generating GIF...' : 'Rendering the final cut...';
   }
 
   return (
@@ -86,7 +89,12 @@ const VideoDisplay: React.FC<VideoDisplayProps> = ({ previewVideoUrl, finalVideo
       
       {!isCurrentlyLoading && videoToShow && (
         <div className="w-full flex flex-col items-center gap-3">
-            {isShowingPreview && (
+            {isGifMode && (
+                 <p className="text-sm text-center text-gray-400">
+                    This is a short, looping video. Download as MP4 and use an online tool to convert to GIF format.
+                </p>
+            )}
+            {isShowingPreview && !isGifMode && (
                  <p className="text-sm text-center text-gray-400">
                     This is a 2-second preview. Like what you see? Generate the full video!
                 </p>
