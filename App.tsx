@@ -462,6 +462,7 @@ const AppContent: React.FC = () => {
   const [savingToAirtableState, setSavingToAirtableState] = useState<{ status: 'idle' | 'saving'; imageId: string | null }>({ status: 'idle', imageId: null });
   const [toast, setToast] = useState<ToastState>({ show: false, message: '', type: 'success' });
   const [isTTSSettingsModalOpen, setIsTTSSettingsModalOpen] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState(false);
   
   const [modalInfo, setModalInfo] = useState<{ isOpen: boolean; imageUrl: string | null }>({
     isOpen: false,
@@ -481,6 +482,24 @@ const AppContent: React.FC = () => {
   const STORAGE_KEY = 'ai-generated-images-v2';
   const AIRTABLE_CONFIG_KEY = 'airtable-config';
   const COMPANY_PROFILE_KEY = 'company-profile';
+
+  useEffect(() => {
+    // This check is for video features which require a user-selected API key.
+    const checkApiKey = async () => {
+        // The `window.aistudio` object may not be available in all environments.
+        if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+            if (await window.aistudio.hasSelectedApiKey()) {
+                setHasApiKey(true);
+            }
+        } else {
+            // If the hosting environment doesn't support key selection,
+            // we assume the key is provided via `process.env.API_KEY` and proceed.
+            // This allows the non-video features to still work.
+            setHasApiKey(true);
+        }
+    };
+    checkApiKey();
+  }, []);
 
   useEffect(() => {
     // Load saved images
@@ -883,14 +902,19 @@ const AppContent: React.FC = () => {
       }
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
-      setError(`Failed to generate video: ${message}`);
+      if (message.includes("Requested entity was not found.")) {
+          setError("Your API key may be invalid or lack permissions for this model. Please select a valid API key and try again.");
+          setHasApiKey(false);
+      } else {
+          setError(`Failed to generate video: ${message}`);
+      }
       console.error(e);
     } finally {
       setLoading(false);
     }
   }, [videoPrompt, videoDuration, videoStyle, mode]);
 
-  const handleGenerateGif = useCallback(async () => {
+  const handleGenerateGif = useCallback(async (referenceImageUrl: string | null) => {
     if (!videoPrompt.trim()) {
         setError('Please enter a prompt for the GIF.');
         return;
@@ -912,22 +936,43 @@ const AppContent: React.FC = () => {
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
 
-    let finalPrompt = videoPrompt.trim();
-    if (videoStyle && videoStyle !== 'None') {
-      const styleObject = VIDEO_STYLES.find(s => s.name === videoStyle);
-      if (styleObject) {
-          finalPrompt += styleObject.promptSuffix;
-      }
+    const style = VIDEO_STYLES.find(s => s.name === videoStyle);
+    // Clean up the style suffix to be a more natural description, e.g., "cinematic, epic"
+    const styleDescription = style?.promptSuffix ? style.promptSuffix.replace(/^,/, '').trim() : '';
+
+    let finalPrompt: string;
+
+    if (referenceImageUrl) {
+        // New, more direct prompt for image-to-GIF
+        finalPrompt = `Animate the provided image into a short, looping GIF. The animation should be about: "${videoPrompt.trim()}"`;
+        if (styleDescription) {
+            finalPrompt += `, in the style of ${styleDescription}`;
+        }
+    } else {
+        // New, more direct prompt for text-to-GIF
+        finalPrompt = `A short, animated, seamlessly looping GIF of: "${videoPrompt.trim()}"`;
+         if (styleDescription) {
+            finalPrompt += `, in a ${styleDescription} style`;
+        }
     }
-    // Add a more robust suffix for GIF generation
-    finalPrompt += ', fun animated GIF, seamless loop, short looping video';
 
     try {
-        const resultUrl = await generateVideoFromPrompt(finalPrompt, 2, true);
+        let resultUrl: string;
+        // Use a 2-second preview for speed, which is ideal for GIFs
+        if (referenceImageUrl) {
+            resultUrl = await generateVideoFromImage(referenceImageUrl, finalPrompt, 2, true);
+        } else {
+            resultUrl = await generateVideoFromPrompt(finalPrompt, 2, true);
+        }
         setFinalVideoUrl(resultUrl);
     } catch (e: unknown) {
         const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
-        setError(`Failed to generate GIF: ${message}`);
+        if (message.includes("Requested entity was not found.")) {
+            setError("Your API key may be invalid or lack permissions for this model. Please select a valid API key and try again.");
+            setHasApiKey(false);
+        } else {
+            setError(`Failed to generate GIF: ${message}`);
+        }
         console.error(e);
     } finally {
         setIsLoading(false);
@@ -968,7 +1013,12 @@ const AppContent: React.FC = () => {
       }
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
-      setError(`Failed to generate video from image: ${message}`);
+      if (message.includes("Requested entity was not found.")) {
+          setError("Your API key may be invalid or lack permissions for this model. Please select a valid API key and try again.");
+          setHasApiKey(false);
+      } else {
+          setError(`Failed to generate video from image: ${message}`);
+      }
       console.error(e);
     } finally {
       setLoading(false);
@@ -1738,7 +1788,12 @@ ${info ? `- Additional Info: "${info}"` : ''}
           setExplainerVideoProgress("Storyboard generation complete!");
       } catch (e) {
           const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
-          setError(`Failed to generate explainer video: ${message}`);
+          if (message.includes("Requested entity was not found.")) {
+              setError("Your API key may be invalid or lack permissions for this model. Please select a valid API key and try again.");
+              setHasApiKey(false);
+          } else {
+              setError(`Failed to generate explainer video: ${message}`);
+          }
           setExplainerVideoProgress('');
       } finally {
           setIsLoading(false);
@@ -1821,7 +1876,12 @@ ${info ? `- Additional Info: "${info}"` : ''}
           setLyricsVideoProgress("Your Lyrics Video storyboard is complete!");
       } catch (e) {
           const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
-          setError(`Failed to generate lyrics video: ${message}`);
+          if (message.includes("Requested entity was not found.")) {
+              setError("Your API key may be invalid or lack permissions for this model. Please select a valid API key and try again.");
+              setHasApiKey(false);
+          } else {
+              setError(`Failed to generate lyrics video: ${message}`);
+          }
           setLyricsVideoProgress('');
       } finally {
           setIsLoading(false);
@@ -1931,6 +1991,43 @@ ${info ? `- Additional Info: "${info}"` : ''}
   const isMusicVideoDisplayMode = mode === 'music-video';
   const isLyricsVideoDisplayMode = mode === 'lyrics-to-video';
   const isAudioDisplayMode = mode === 'audio-to-text';
+  const isVideoMode = ['text-to-video', 'animate-image', 'video-green-screen', 'gif-generator', 'explainer-video', 'lyrics-to-video', 'lip-sync'].includes(mode);
+
+  if (isVideoMode && !hasApiKey) {
+    return (
+        <div className="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center font-sans p-4">
+            <Header onSettingsClick={() => setIsSettingsModalOpen(true)} onTTSSettingsClick={() => setIsTTSSettingsModalOpen(true)} />
+            <main className="w-full max-w-lg text-center flex-grow flex flex-col justify-center">
+                <h2 className="text-3xl font-bold text-indigo-400 mb-4">API Key Required for Video Generation</h2>
+                <p className="text-gray-400 mb-6">
+                    To use video generation features, you need to select an API key associated with a project that has billing enabled.
+                </p>
+                {error && <ErrorMessage message={error} />}
+                <button
+                    onClick={async () => {
+                        if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+                            await window.aistudio.openSelectKey();
+                            setHasApiKey(true); // Optimistically assume success
+                            setError(null); // Clear previous errors
+                        } else {
+                            setError("API key selection is not supported in this environment.");
+                        }
+                    }}
+                    className="w-full flex items-center justify-center px-6 py-3 mt-4 bg-indigo-600 text-white font-semibold rounded-lg shadow-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-indigo-500 transition-all"
+                >
+                    Select API Key
+                </button>
+                <p className="text-xs text-gray-500 mt-4">
+                    For more information, please visit the{' '}
+                    <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline">
+                        billing documentation
+                    </a>.
+                </p>
+            </main>
+            <Footer />
+        </div>
+    );
+  }
 
   return (
     <div className="bg-gray-900 text-white min-h-screen flex flex-col items-center font-sans">

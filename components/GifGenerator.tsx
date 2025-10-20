@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 
 interface GifGeneratorProps {
   prompt: string;
   setPrompt: (prompt: string) => void;
-  onSubmit: () => void;
+  onSubmit: (referenceImageUrl: string | null) => void;
   onEnhance: () => void;
   isEnhancing: boolean;
   isLoading: boolean;
@@ -11,16 +11,83 @@ interface GifGeneratorProps {
 
 const GifGenerator: React.FC<GifGeneratorProps> = ({ prompt, setPrompt, onSubmit, onEnhance, isEnhancing, isLoading }) => {
   const isAnyLoading = isLoading || isEnhancing;
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleFileChange = (files: FileList | null) => {
+    if (files && files[0]) {
+      const file = files[0];
+      if (!file.type.startsWith('image/')) {
+        setError('Please upload a valid image file (PNG, JPG, etc.).');
+        return;
+      }
+      setError(null);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImageUrl(reader.result as string);
+      };
+      reader.onerror = () => {
+        setError("Failed to read the image file.");
+      }
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  const handleDragOver = useCallback((event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+  }, []);
+
+  const handleDrop = useCallback((event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    handleFileChange(event.dataTransfer.files);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAnyLoading && prompt.trim()) {
-      onSubmit();
+      onSubmit(imageUrl);
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div>
+        <label
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            htmlFor="gif-source-image-upload" 
+            className="w-full h-40 p-3 bg-gray-800 border-2 border-dashed border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300 flex items-center justify-center cursor-pointer hover:bg-gray-700/50"
+        >
+          {imageUrl ? (
+            <div className="relative w-full h-full">
+                <img src={imageUrl} alt="Source preview" className="max-h-full max-w-full object-contain rounded-md mx-auto" />
+                <button 
+                    type="button" 
+                    onClick={(e) => { e.preventDefault(); setImageUrl(null); }} 
+                    className="absolute top-1 right-1 bg-gray-900/70 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                    title="Clear image"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                </button>
+            </div>
+          ) : (
+            <div className="text-center text-gray-500">
+              <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+              <p className="mt-2 text-sm font-semibold">Add Reference Image (Optional)</p>
+              <p className="text-xs">Click to upload or drag & drop</p>
+            </div>
+          )}
+        </label>
+        <input
+            id="gif-source-image-upload"
+            type="file"
+            accept="image/*"
+            onChange={(e) => handleFileChange(e.target.files)}
+            className="hidden"
+            disabled={isAnyLoading}
+        />
+        {error && <p className="text-red-400 text-sm mt-1">{error}</p>}
+      </div>
       <textarea
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}

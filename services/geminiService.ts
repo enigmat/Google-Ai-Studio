@@ -2,9 +2,6 @@
 
 import { GoogleGenAI, Modality, Type, GenerateContentResponse, LiveServerMessage, Blob, CloseEvent, ErrorEvent } from "@google/genai";
 
-// The AI client is initialized lazily to avoid crashing the app if the API key is missing.
-let ai: GoogleGenAI | null = null;
-
 // --- API KEY MANAGEMENT ---
 // In a production environment, it is highly recommended to use a backend proxy or serverless function
 // to manage the API key securely. This prevents the key from being exposed on the client-side.
@@ -22,12 +19,9 @@ const getApiKey = (): string => {
     return apiKey;
 };
 
-// Helper to get the AI client, initializing it on the first call.
+// Helper to get the AI client, creating a new instance on every call to pick up the latest key.
 const getAiClient = (): GoogleGenAI => {
-    if (!ai) {
-        ai = new GoogleGenAI({ apiKey: getApiKey() });
-    }
-    return ai;
+    return new GoogleGenAI({ apiKey: getApiKey() });
 };
 
 export interface SocialMediaPost {
