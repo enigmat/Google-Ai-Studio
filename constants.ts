@@ -59,6 +59,7 @@ export const VIDEO_STYLES = [
     { name: 'Black & White', promptSuffix: ', black and white, monochrome, high contrast, dramatic shadows' },
     { name: 'Time-lapse', promptSuffix: ', time-lapse, fast motion, clouds moving quickly, city lights streaking' },
     { name: 'Slow Motion', promptSuffix: ', slow motion, ultra slow-mo, 1000fps, dramatic, detailed movement' },
+    { name: 'Caricature', promptSuffix: ', caricature style, exaggerated features, humorous, animated drawing' },
 ];
 
 // For Avatar Generator

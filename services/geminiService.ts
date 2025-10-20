@@ -718,6 +718,39 @@ export const generateBlogTopicIdeas = async (category: string): Promise<{topic: 
     }
 };
 
+export const generateRecipeTopicIdeas = async (): Promise<{topic: string, imagePrompt: string}[]> => {
+    const aiClient = getAiClient();
+    try {
+        const response = await aiClient.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Based on current food trends for today, generate 5 trending recipe ideas. For each recipe idea, also provide a creative, visually descriptive prompt suitable for generating a stunning header image for the recipe post.`,
+            config: {
+                tools: [{googleSearch: {}}],
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            topic: { type: Type.STRING, description: 'The trending recipe idea.' },
+                            imagePrompt: { type: Type.STRING, description: 'A visually descriptive prompt to generate a header image for the recipe.' }
+                        },
+                        required: ['topic', 'imagePrompt']
+                    }
+                },
+            },
+        });
+        const jsonStr = response.text.trim();
+        return JSON.parse(jsonStr);
+    } catch (error) {
+        console.error("Error generating recipe topic ideas with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while generating recipe topic ideas.");
+    }
+};
+
 export const generateRecipePost = async (dish: string, cuisine: string, prepTime: string, dietary: string[]): Promise<string> => {
     const aiClient = getAiClient();
 

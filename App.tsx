@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 // FIX: Added all missing function and type imports from geminiService to resolve compilation errors.
-import { generateImageFromPrompt, enhancePrompt, imageAction, generateImageFromReference, generateVideoFromPrompt, generateVideoFromImage, SocialMediaPost, VideoScene, MusicVideoScene, generateImageMetadata, getPromptInspiration, generatePromptFromImage, generateUgcProductAd, generateProductScene, generateMockup, generateBlogPost, generateSocialMediaPost, generateVideoScriptFromText, generateMusicVideoScript, generateLyricsStoryboard, LyricsScene, generateLipSyncVideo, BusinessName, generateBusinessNames, EmailCampaign, generateEmailCampaign, CompanyProfile, EbookIdea, generateEbookIdea, generateRecipePost, generateBlogTopicIdeas } from './services/geminiService';
+import { generateImageFromPrompt, enhancePrompt, imageAction, generateImageFromReference, generateVideoFromPrompt, generateVideoFromImage, SocialMediaPost, VideoScene, MusicVideoScene, generateImageMetadata, getPromptInspiration, generatePromptFromImage, generateUgcProductAd, generateProductScene, generateMockup, generateBlogPost, generateSocialMediaPost, generateVideoScriptFromText, generateMusicVideoScript, generateLyricsStoryboard, LyricsScene, generateLipSyncVideo, BusinessName, generateBusinessNames, EmailCampaign, generateEmailCampaign, CompanyProfile, EbookIdea, generateEbookIdea, generateRecipePost, generateBlogTopicIdeas, generateRecipeTopicIdeas } from './services/geminiService';
 import { saveImageToAirtable, AirtableConfig, getRandomPromptFromAirtable, getPromptsFromAirtable, updateAirtableRecord } from './services/airtableService';
 import Header from './components/Header';
 import PromptInput from './components/PromptInput';
@@ -912,9 +912,15 @@ const AppContent: React.FC = () => {
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
 
-    const style = VIDEO_STYLES.find(s => s.name === videoStyle);
-    let finalPrompt = style ? `${videoPrompt.trim()}${style.promptSuffix}` : videoPrompt.trim();
-    finalPrompt += ', short looping video, animated GIF style';
+    let finalPrompt = videoPrompt.trim();
+    if (videoStyle && videoStyle !== 'None') {
+      const styleObject = VIDEO_STYLES.find(s => s.name === videoStyle);
+      if (styleObject) {
+          finalPrompt += styleObject.promptSuffix;
+      }
+    }
+    // Add a more robust suffix for GIF generation
+    finalPrompt += ', fun animated GIF, seamless loop, short looping video';
 
     try {
         const resultUrl = await generateVideoFromPrompt(finalPrompt, 2, true);
@@ -2121,7 +2127,11 @@ ${info ? `- Additional Info: "${info}"` : ''}
             {mode === 'recipe-post' && (
               <>
                 <h2 className="text-xl font-bold text-indigo-400">Recipe Post Generator</h2>
-                <RecipePostGenerator onSubmit={handleGenerateRecipePost} isLoading={isLoading} />
+                <RecipePostGenerator 
+                  onSubmit={handleGenerateRecipePost} 
+                  isLoading={isLoading}
+                  onGenerateHeader={handleGenerateImageFromTopicIdea}
+                />
               </>
             )}
             
