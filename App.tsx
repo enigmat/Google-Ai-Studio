@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 // FIX: Added all missing function and type imports from geminiService to resolve compilation errors.
-import { generateImageFromPrompt, enhancePrompt, imageAction, generateImageFromReference, generateVideoFromPrompt, generateVideoFromImage, SocialMediaPost, VideoScene, MusicVideoScene, generateImageMetadata, getPromptInspiration, generatePromptFromImage, generateUgcProductAd, generateProductScene, generateMockup, generateBlogPost, generateSocialMediaPost, generateVideoScriptFromText, generateMusicVideoScript, generateLyricsStoryboard, LyricsScene, generateLipSyncVideo, BusinessName, generateBusinessNames, EmailCampaign, generateEmailCampaign, CompanyProfile, EbookIdea, generateEbookIdea, generateRecipePost, generateBlogTopicIdeas, generateRecipeTopicIdeas } from './services/geminiService';
+import { generateImageFromPrompt, enhancePrompt, imageAction, generateImageFromReference, generateVideoFromPrompt, generateVideoFromImage, SocialMediaPost, VideoScene, MusicVideoScene, generateImageMetadata, getPromptInspiration, generatePromptFromImage, generateUgcProductAd, generateProductScene, generateMockup, generateBlogPost, generateSocialMediaPost, generateVideoScriptFromText, generateMusicVideoScript, generateLyricsStoryboard, LyricsScene, generateLipSyncVideo, BusinessName, generateBusinessNames, EmailCampaign, generateEmailCampaign, CompanyProfile, EbookIdea, generateEbookIdea, generateRecipePost, generateBlogTopicIdeas, generateRecipeTopicIdeas, generatePoem } from './services/geminiService';
 import { saveImageToAirtable, AirtableConfig, getRandomPromptFromAirtable, getPromptsFromAirtable, updateAirtableRecord } from './services/airtableService';
 import Header from './components/Header';
 import PromptInput from './components/PromptInput';
@@ -62,6 +62,8 @@ import BookCoverGenerator from './components/BookCoverGenerator';
 import BookMockupGenerator from './components/BookMockupGenerator';
 import GifGenerator from './components/GifGenerator';
 import RecipePostGenerator from './components/RecipePostGenerator';
+import PoemWriterGenerator from './components/PoemWriterGenerator';
+import PoemDisplay from './components/PoemDisplay';
 
 
 type AspectRatio = typeof ASPECT_RATIOS[number];
@@ -431,6 +433,7 @@ const AppContent: React.FC = () => {
   const [chatHistory, setChatHistory] = useState<string[]>([]);
   // Blog Post state
   const [blogPostContent, setBlogPostContent] = useState<string | null>(null);
+  const [poemContent, setPoemContent] = useState<string | null>(null);
   // Social Media state
   const [socialMediaPosts, setSocialMediaPosts] = useState<SocialMediaPost[] | null>(null);
   // Business Name state
@@ -577,7 +580,7 @@ const AppContent: React.FC = () => {
   };
   
   const handleSetMode = (newMode: GeneratorMode) => {
-    const isNewModeTextual = ['blog-post', 'social-media-post', 'email-campaign', 'ebook-idea', 'recipe-post'].includes(newMode);
+    const isNewModeTextual = ['blog-post', 'social-media-post', 'email-campaign', 'ebook-idea', 'recipe-post', 'poem-writer'].includes(newMode);
     const isNewModeVideo = newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'video-green-screen' || newMode === 'lyrics-to-video' || newMode === 'lip-sync' || newMode === 'gif-generator';
     
     if (isNewModeTextual || isNewModeVideo || ['product-studio', 'tshirt-mockup', 'avatar-generator', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'music-video', 'title-to-image', 'audio-to-text', 'business-name-generator', 'book-cover', 'book-mockup'].includes(newMode)) {
@@ -593,6 +596,7 @@ const AppContent: React.FC = () => {
       setSocialMediaPosts(null);
       setEmailCampaigns(null);
       setEbookIdea(null);
+      setPoemContent(null);
     }
      if (newMode !== 'business-name-generator') {
         setBusinessNames(null);
@@ -693,6 +697,7 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setPoemContent(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
     setVideoStoryboard(null);
@@ -737,6 +742,7 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setPoemContent(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
     setVideoStoryboard(null);
@@ -776,6 +782,7 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setPoemContent(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
@@ -807,6 +814,7 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setPoemContent(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
@@ -839,6 +847,7 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setPoemContent(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
@@ -877,6 +886,7 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setPoemContent(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
@@ -930,6 +940,7 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setPoemContent(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
     setVideoStoryboard(null);
@@ -992,6 +1003,7 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setPoemContent(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
@@ -1035,6 +1047,7 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setPoemContent(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
@@ -1172,6 +1185,7 @@ const AppContent: React.FC = () => {
       setBusinessNames(null);
       setEmailCampaigns(null);
       setEbookIdea(null);
+      setPoemContent(null);
       setEditModalInfo({ isOpen: false, imageUrl: null, mode: 'inpaint' });
       setExpandModalInfo({ isOpen: false, imageUrl: null });
       setAirtableRecord(null); // Image actions create new content, so clear the prompt context
@@ -1205,6 +1219,7 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setPoemContent(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
     setAirtableRecord(null);
@@ -1262,6 +1277,7 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setPoemContent(null);
     // Clear other content types
     setImageUrls(null);
     setGeneratedImagesData([]);
@@ -1283,6 +1299,36 @@ const AppContent: React.FC = () => {
     }
   }, []);
 
+  const handleGeneratePoem = useCallback(async (topic: string, style: string, mood: string) => {
+    setIsLoading(true);
+    setError(null);
+    setBlogPostContent(null);
+    setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
+    setEbookIdea(null);
+    setPoemContent(null);
+    // Clear other content types
+    setImageUrls(null);
+    setGeneratedImagesData([]);
+    setFinalVideoUrl(null);
+    setPreviewVideoUrl(null);
+    setVideoStoryboard(null);
+    setMusicVideoStoryboard(null);
+    setLyricsVideoStoryboard(null);
+    
+    try {
+      const content = await generatePoem(topic, style, mood);
+      setPoemContent(content);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+      setError(`Failed to generate poem: ${message}`);
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const handleGenerateRecipePost = useCallback(async (dish: string, cuisine: string, prepTime: string, dietary: string[]) => {
     setIsLoading(true);
     setError(null);
@@ -1291,6 +1337,7 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setPoemContent(null);
     setImageUrls(null);
     setGeneratedImagesData([]);
     setFinalVideoUrl(null);
@@ -1319,6 +1366,7 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setPoemContent(null);
     // Clear other content types
     setImageUrls(null);
     setGeneratedImagesData([]);
@@ -1348,6 +1396,7 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setPoemContent(null);
     // Clear other content types
     setImageUrls(null);
     setGeneratedImagesData([]);
@@ -1383,6 +1432,7 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setPoemContent(null);
     // Clear other content types
     setImageUrls(null);
     setGeneratedImagesData([]);
@@ -1412,6 +1462,7 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setPoemContent(null);
     // Clear other content types
     setImageUrls(null);
     setGeneratedImagesData([]);
@@ -1445,6 +1496,7 @@ const AppContent: React.FC = () => {
       setBusinessNames(null);
       setEmailCampaigns(null);
       setEbookIdea(null);
+      setPoemContent(null);
       setGroundingSources(null);
       setInspirationPrompts([]);
       setVideoStoryboard(null);
@@ -1557,6 +1609,7 @@ const AppContent: React.FC = () => {
       setBusinessNames(null);
       setEmailCampaigns(null);
       setEbookIdea(null);
+      setPoemContent(null);
       setGroundingSources(null);
       setInspirationPrompts([]);
       setVideoStoryboard(null);
@@ -1604,6 +1657,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
         setBusinessNames(null);
         setEmailCampaigns(null);
         setEbookIdea(null);
+        setPoemContent(null);
         setGroundingSources(null);
         setInspirationPrompts([]);
         setVideoStoryboard(null);
@@ -1636,6 +1690,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
         setBusinessNames(null);
         setEmailCampaigns(null);
         setEbookIdea(null);
+        setPoemContent(null);
         setGroundingSources(null);
         setInspirationPrompts([]);
         setVideoStoryboard(null);
@@ -1692,6 +1747,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
         setBusinessNames(null);
         setEmailCampaigns(null);
         setEbookIdea(null);
+        setPoemContent(null);
         setGroundingSources(null);
         setInspirationPrompts([]);
         setVideoStoryboard(null);
@@ -1738,6 +1794,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setPoemContent(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
     setVideoStoryboard(null);
@@ -1815,6 +1872,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setPoemContent(null);
     setLyricsVideoStoryboard(null);
     
     try {
@@ -1986,7 +2044,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
   const isAnyLoading = isLoading || isPreviewLoading || isEnhancing || isInspiring || isFetchingFromAirtable;
   const isImageDisplayMode = ['text-to-image', 'image-variations', 'ugc-ad', 'product-studio', 'tshirt-mockup', 'avatar-generator', 'creative-chat', 'image-to-prompt', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'title-to-image', 'book-cover', 'book-mockup'].includes(mode);
   const isVideoDisplayMode = ['text-to-video', 'animate-image', 'video-green-screen', 'lip-sync', 'gif-generator'].includes(mode);
-  const isTextDisplayMode = ['blog-post', 'social-media-post', 'email-campaign', 'ebook-idea', 'recipe-post'].includes(mode);
+  const isTextDisplayMode = ['blog-post', 'social-media-post', 'email-campaign', 'ebook-idea', 'recipe-post', 'poem-writer'].includes(mode);
   const isBusinessNameDisplayMode = mode === 'business-name-generator';
   const isMusicVideoDisplayMode = mode === 'music-video';
   const isLyricsVideoDisplayMode = mode === 'lyrics-to-video';
@@ -2220,6 +2278,13 @@ ${info ? `- Additional Info: "${info}"` : ''}
                 <BlogPostGenerator onSubmit={handleGenerateBlogPost} onGenerateHeader={handleGenerateImageFromTopicIdea} isLoading={isLoading} />
               </>
             )}
+            
+            {mode === 'poem-writer' && (
+              <>
+                <h2 className="text-xl font-bold text-indigo-400">Poem Writer</h2>
+                <PoemWriterGenerator onSubmit={handleGeneratePoem} isLoading={isLoading} />
+              </>
+            )}
 
             {mode === 'recipe-post' && (
               <>
@@ -2393,6 +2458,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
             {isTextDisplayMode && (
               <>
                 {(mode === 'blog-post' || mode === 'recipe-post') && <BlogPostDisplay content={blogPostContent} isLoading={isLoading} onGenerateHeaderClick={handleGenerateHeaderImage} />}
+                {mode === 'poem-writer' && <PoemDisplay content={poemContent} isLoading={isLoading} />}
                 {mode === 'social-media-post' && <SocialMediaPostDisplay posts={socialMediaPosts} isLoading={isLoading} onGenerateImageClick={handleGenerateImageForPost} />}
                 {mode === 'email-campaign' && <EmailCampaignDisplay campaigns={emailCampaigns} isLoading={isLoading} />}
                 {mode === 'ebook-idea' && <EbookIdeaDisplay idea={ebookIdea} isLoading={isLoading} onGenerateCoverClick={handleGenerateCoverForEbook} />}

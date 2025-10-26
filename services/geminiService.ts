@@ -517,6 +517,23 @@ export const generateBlogPost = async (topic: string, tone: string, length: stri
     }
 };
 
+export const generatePoem = async (topic: string, style: string, mood: string): Promise<string> => {
+    const aiClient = getAiClient();
+    try {
+        const response = await aiClient.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Write a poem about "${topic}". The style should be ${style}, and the mood should be ${mood}. Preserve line breaks.`,
+        });
+        return response.text.trim();
+    } catch (error) {
+        console.error("Error generating poem with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while generating the poem.");
+    }
+};
+
 export const generateSocialMediaPost = async (topic: string, platform: string, tone: string, audience: string, includeHashtags: boolean, includeEmojis: boolean): Promise<SocialMediaPost[]> => {
     const aiClient = getAiClient();
     try {

@@ -13,6 +13,7 @@ export type GeneratorMode =
   | 'blog-post'
   | 'recipe-post'
   | 'social-media-post'
+  | 'poem-writer'
   | 'avatar-generator'
   | 'flyer-generator'
   | 'logo-generator'
@@ -122,3 +123,7 @@ export const EBOOK_AUDIENCES = ['Children', 'Young Adults', 'New Adults', 'Adult
 
 // For Book Cover Generator
 export const BOOK_COVER_STYLES = ['Photorealistic', 'Minimalist', 'Illustrated', 'Vintage', 'Typographic', 'Fantasy Painting'];
+
+// For Poem Writer
+export const POEM_STYLES = ['Free Verse', 'Sonnet', 'Haiku', 'Limerick', 'Ballad', 'Ode'];
+export const POEM_MOODS = ['Joyful', 'Melancholy', 'Humorous', 'Reflective', 'Romantic', 'Mysterious'];

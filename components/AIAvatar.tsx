@@ -113,6 +113,11 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
     "Click 'Generate Image' on a post to create a perfectly matched visual for it!",
     "Don't like the first few options? Just click 'Generate Posts' again for a fresh batch of ideas.",
   ],
+  'poem-writer': [
+    "Feeling stuck? Try a simple topic like 'the moon' or 'a rainy day'.",
+    "Combining an unusual style and mood can lead to creative results!",
+    "Don't be afraid to experiment with different poetic forms."
+  ],
   'title-to-image': [
     "Think like a movie poster designer! What's the core emotion of your title?",
     "A good synopsis with strong keywords can dramatically improve the result.",
