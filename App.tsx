@@ -434,7 +434,7 @@ const AppContent: React.FC = () => {
   // Blog Post state
   const [blogPostContent, setBlogPostContent] = useState<string | null>(null);
   const [poemContent, setPoemContent] = useState<string | null>(null);
-  const [blogProfile, setBlogProfile] = useState<BlogProfile | null>(null);
+  const [blogProfiles, setBlogProfiles] = useState<{[name: string]: BlogProfile}>({});
   // Social Media state
   const [socialMediaPosts, setSocialMediaPosts] = useState<SocialMediaPost[] | null>(null);
   // Business Name state
@@ -486,7 +486,7 @@ const AppContent: React.FC = () => {
   const STORAGE_KEY = 'ai-generated-images-v2';
   const AIRTABLE_CONFIG_KEY = 'airtable-config';
   const COMPANY_PROFILE_KEY = 'company-profile';
-  const BLOG_PROFILE_KEY = 'blog-profile';
+  const BLOG_PROFILES_KEY = 'blog-profiles';
 
   useEffect(() => {
     // This check is for video features which require a user-selected API key.
@@ -540,14 +540,30 @@ const AppContent: React.FC = () => {
       console.error("Failed to load company profile from local storage:", err);
     }
     
-    // Load blog profile
+    // Load blog profiles
     try {
-      const blogProfileJson = localStorage.getItem(BLOG_PROFILE_KEY);
-      if (blogProfileJson) {
-          setBlogProfile(JSON.parse(blogProfileJson));
+      const blogProfilesJson = localStorage.getItem(BLOG_PROFILES_KEY);
+      if (blogProfilesJson) {
+        setBlogProfiles(JSON.parse(blogProfilesJson));
+      } else {
+        // Migration from old key
+        const oldProfileJson = localStorage.getItem('blog-profile');
+        if (oldProfileJson) {
+          try {
+            const oldProfile = JSON.parse(oldProfileJson);
+            if (oldProfile && oldProfile.companyName) {
+              const newProfiles = { 'Default': oldProfile };
+              setBlogProfiles(newProfiles);
+              localStorage.setItem(BLOG_PROFILES_KEY, JSON.stringify(newProfiles));
+              localStorage.removeItem('blog-profile');
+            }
+          } catch (e) {
+            console.error('Failed to migrate old blog profile', e)
+          }
+        }
       }
     } catch (err) {
-      console.error("Failed to load blog profile from local storage:", err);
+      console.error("Failed to load blog profiles from local storage:", err);
     }
   }, []);
   
@@ -1281,7 +1297,7 @@ const AppContent: React.FC = () => {
     }
   }, [chatImage]);
 
-  const handleGenerateBlogPost = useCallback(async (topic: string, tone: string, length: string, audience: string) => {
+  const handleGenerateBlogPost = useCallback(async (topic: string, tone: string, length: string, audience: string, profile: BlogProfile | null) => {
     setIsLoading(true);
     setError(null);
     setBlogPostContent(null);
@@ -1300,7 +1316,7 @@ const AppContent: React.FC = () => {
     setLyricsVideoStoryboard(null);
     
     try {
-      const content = await generateBlogPost(topic, tone, length, audience, blogProfile);
+      const content = await generateBlogPost(topic, tone, length, audience, profile);
       setBlogPostContent(content);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
@@ -1309,7 +1325,7 @@ const AppContent: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [blogProfile]);
+  }, []);
 
   const handleGeneratePoem = useCallback(async (topic: string, style: string, mood: string) => {
     setIsLoading(true);
@@ -1436,10 +1452,10 @@ const AppContent: React.FC = () => {
     showToast('Company profile saved!', 'success');
   };
 
-  const handleSaveBlogProfile = (profile: BlogProfile) => {
-    setBlogProfile(profile);
-    localStorage.setItem(BLOG_PROFILE_KEY, JSON.stringify(profile));
-    showToast('Blog profile saved!', 'success');
+  const handleUpdateBlogProfiles = (profiles: {[name: string]: BlogProfile}) => {
+    setBlogProfiles(profiles);
+    localStorage.setItem(BLOG_PROFILES_KEY, JSON.stringify(profiles));
+    showToast('Blog profiles updated!', 'success');
   };
 
   const handleGenerateEmailCampaign = useCallback(async (productName: string, productDescription: string, audience: string, campaignType: string, tone: string) => {
@@ -2297,8 +2313,8 @@ ${info ? `- Additional Info: "${info}"` : ''}
                   onSubmit={handleGenerateBlogPost}
                   onGenerateHeader={handleGenerateImageFromTopicIdea}
                   isLoading={isLoading}
-                  blogProfile={blogProfile}
-                  onSaveProfile={handleSaveBlogProfile}
+                  blogProfiles={blogProfiles}
+                  onUpdateProfiles={handleUpdateBlogProfiles}
                 />
               </>
             )}

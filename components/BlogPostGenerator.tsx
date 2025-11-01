@@ -7,69 +7,187 @@ interface TopicIdea {
   imagePrompt: string;
 }
 
-const BlogProfileEditor: React.FC<{
-  profile: BlogProfile | null;
-  onSave: (profile: BlogProfile) => void;
-}> = ({ profile, onSave }) => {
+interface ProfileEditModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (name: string, profile: BlogProfile) => void;
+  existingProfile?: { name: string; data: BlogProfile };
+  existingNames: string[];
+}
+
+const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ isOpen, onClose, onSave, existingProfile, existingNames }) => {
+  const [profileName, setProfileName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [website, setWebsite] = useState('');
   const [twitter, setTwitter] = useState('');
   const [linkedIn, setLinkedIn] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    setCompanyName(profile?.companyName || '');
-    setWebsite(profile?.website || '');
-    setTwitter(profile?.twitter || '');
-    setLinkedIn(profile?.linkedIn || '');
-  }, [profile]);
+    if (isOpen) {
+      setProfileName(existingProfile?.name || '');
+      setCompanyName(existingProfile?.data.companyName || '');
+      setWebsite(existingProfile?.data.website || '');
+      setTwitter(existingProfile?.data.twitter || '');
+      setLinkedIn(existingProfile?.data.linkedIn || '');
+      setError('');
+    }
+  }, [isOpen, existingProfile]);
+
+  if (!isOpen) return null;
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({ companyName, website, twitter, linkedIn });
+    const trimmedName = profileName.trim();
+    if (!trimmedName) {
+      setError('Profile name is required.');
+      return;
+    }
+    // Check for name collision only when creating a new profile or renaming an existing one
+    if ((!existingProfile || (existingProfile && existingProfile.name !== trimmedName)) && existingNames.includes(trimmedName)) {
+      setError('A profile with this name already exists.');
+      return;
+    }
+    onSave(trimmedName, { companyName, website, twitter, linkedIn });
   };
-  
+
   const commonInputClasses = "w-full p-3 bg-gray-900 border-2 border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300";
 
   return (
-    <form onSubmit={handleSave} className="flex flex-col gap-4">
-      <p className="text-xs text-gray-400">This info will be used to generate a signature for your blog posts and is saved in your browser.</p>
-      <div>
-        <label htmlFor="blog-company-name" className="block text-sm font-semibold text-gray-400 mb-1">Company/Author Name</label>
-        <input id="blog-company-name" type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="e.g., The Creative Corner" className={commonInputClasses} />
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
+      <div className="bg-gray-800 rounded-xl shadow-2xl p-6 w-full max-w-lg border border-gray-700" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-xl font-bold text-indigo-400 mb-4">{existingProfile ? 'Edit Profile' : 'Create New Profile'}</h2>
+        <form onSubmit={handleSave} className="flex flex-col gap-4">
+          <div>
+            <label htmlFor="modal-profile-name" className="block text-sm font-semibold text-gray-400 mb-1">Profile Name</label>
+            <input id="modal-profile-name" type="text" value={profileName} onChange={(e) => setProfileName(e.target.value)} placeholder="e.g., Business Blog, Food Blog" className={commonInputClasses} required />
+          </div>
+          {error && <p className="text-red-400 text-sm -mt-2">{error}</p>}
+          <div>
+            <label htmlFor="modal-company-name" className="block text-sm font-semibold text-gray-400 mb-1">Company/Author Name</label>
+            <input id="modal-company-name" type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="e.g., The Creative Corner" className={commonInputClasses} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="modal-website" className="block text-sm font-semibold text-gray-400 mb-1">Website URL</label>
+              <input id="modal-website" type="url" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://example.com" className={commonInputClasses} />
+            </div>
+            <div>
+              <label htmlFor="modal-twitter" className="block text-sm font-semibold text-gray-400 mb-1">Twitter Handle</label>
+              <input id="modal-twitter" type="text" value={twitter} onChange={(e) => setTwitter(e.target.value)} placeholder="@username" className={commonInputClasses} />
+            </div>
+          </div>
+          <div>
+            <label htmlFor="modal-linkedin" className="block text-sm font-semibold text-gray-400 mb-1">Full LinkedIn URL</label>
+            <input id="modal-linkedin" type="url" value={linkedIn} onChange={(e) => setLinkedIn(e.target.value)} placeholder="https://linkedin.com/in/username" className={commonInputClasses} />
+          </div>
+          <div className="flex justify-end gap-4 mt-4">
+            <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-700 text-gray-300 font-semibold rounded-lg hover:bg-gray-600">Cancel</button>
+            <button type="submit" className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700">Save Profile</button>
+          </div>
+        </form>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="blog-website" className="block text-sm font-semibold text-gray-400 mb-1">Website URL</label>
-          <input id="blog-website" type="url" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://example.com" className={commonInputClasses} />
-        </div>
-        <div>
-          <label htmlFor="blog-twitter" className="block text-sm font-semibold text-gray-400 mb-1">Twitter Handle</label>
-          <input id="blog-twitter" type="text" value={twitter} onChange={(e) => setTwitter(e.target.value)} placeholder="username (no @)" className={commonInputClasses} />
-        </div>
+    </div>
+  );
+};
+
+interface BlogProfilesManagerProps {
+  profiles: {[name: string]: BlogProfile};
+  onUpdateProfiles: (profiles: {[name: string]: BlogProfile}) => void;
+  onProfileSelect: (profile: BlogProfile | null) => void;
+}
+
+const BlogProfilesManager: React.FC<BlogProfilesManagerProps> = ({ profiles, onUpdateProfiles, onProfileSelect }) => {
+  const profileNames = Object.keys(profiles);
+  const [selectedName, setSelectedName] = useState<string>('none');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProfile, setEditingProfile] = useState<{ name: string; data: BlogProfile } | undefined>(undefined);
+
+  useEffect(() => {
+    if (profileNames.length > 0 && (selectedName === 'none' || !profiles[selectedName])) {
+      setSelectedName(profileNames[0]);
+    } else if (profileNames.length === 0 && selectedName !== 'none') {
+      setSelectedName('none');
+    }
+  }, [profiles]);
+
+  useEffect(() => {
+    onProfileSelect(selectedName === 'none' ? null : profiles[selectedName] || null);
+  }, [selectedName, profiles, onProfileSelect]);
+
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedName(e.target.value);
+  };
+
+  const handleAdd = () => {
+    setEditingProfile(undefined);
+    setIsModalOpen(true);
+  };
+
+  const handleEdit = () => {
+    if (selectedName !== 'none' && profiles[selectedName]) {
+      setEditingProfile({ name: selectedName, data: profiles[selectedName] });
+      setIsModalOpen(true);
+    }
+  };
+
+  const handleDelete = () => {
+    if (selectedName !== 'none' && window.confirm(`Are you sure you want to delete the "${selectedName}" profile?`)) {
+      const { [selectedName]: _, ...newProfiles } = profiles;
+      onUpdateProfiles(newProfiles);
+    }
+  };
+  
+  const handleSaveProfile = (name: string, profile: BlogProfile) => {
+    const newProfiles = { ...profiles };
+    if (editingProfile && editingProfile.name !== name) {
+      delete newProfiles[editingProfile.name];
+    }
+    newProfiles[name] = profile;
+    onUpdateProfiles(newProfiles);
+    setSelectedName(name);
+    setIsModalOpen(false);
+  };
+  
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-xs text-gray-400">Select a profile to apply its signature, or add a new one.</p>
+      <div className="flex items-center gap-2">
+        <select value={selectedName} onChange={handleSelectChange} className="w-full p-3 bg-gray-900 border-2 border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <option value="none">None (No Signature)</option>
+          {profileNames.map(name => <option key={name} value={name}>{name}</option>)}
+        </select>
+        <button type="button" onClick={handleEdit} disabled={selectedName === 'none'} className="p-3 bg-gray-700 rounded-lg hover:bg-gray-600 disabled:opacity-50" title="Edit Selected Profile">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg>
+        </button>
       </div>
-      <div>
-        <label htmlFor="blog-linkedin" className="block text-sm font-semibold text-gray-400 mb-1">Full LinkedIn URL</label>
-        <input id="blog-linkedin" type="url" value={linkedIn} onChange={(e) => setLinkedIn(e.target.value)} placeholder="https://linkedin.com/in/username" className={commonInputClasses} />
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={handleAdd} className="w-full py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700">Add New Profile</button>
+        <button type="button" onClick={handleDelete} disabled={selectedName === 'none'} className="w-full py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 disabled:opacity-50">Delete Selected</button>
       </div>
-      <button type="submit" className="self-end px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-indigo-500">
-        Save Profile
-      </button>
-    </form>
+      <ProfileEditModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSaveProfile}
+        existingProfile={editingProfile}
+        existingNames={profileNames}
+      />
+    </div>
   );
 };
 
 
 interface BlogPostGeneratorProps {
-  onSubmit: (topic: string, tone: string, length: string, audience: string) => void;
+  onSubmit: (topic: string, tone: string, length: string, audience: string, profile: BlogProfile | null) => void;
   onGenerateHeader: (imagePrompt: string) => void;
   isLoading: boolean;
-  blogProfile: BlogProfile | null;
-  onSaveProfile: (profile: BlogProfile) => void;
+  blogProfiles: {[name: string]: BlogProfile};
+  onUpdateProfiles: (profiles: {[name: string]: BlogProfile}) => void;
 }
 
 const TOPIC_CATEGORIES = ['Business', 'Creative', 'Tech', 'Lifestyle', 'Music', 'Food'];
 
-const BlogPostGenerator: React.FC<BlogPostGeneratorProps> = ({ onSubmit, onGenerateHeader, isLoading, blogProfile, onSaveProfile }) => {
+const BlogPostGenerator: React.FC<BlogPostGeneratorProps> = ({ onSubmit, onGenerateHeader, isLoading, blogProfiles, onUpdateProfiles }) => {
   const [topic, setTopic] = useState('');
   const [tone, setTone] = useState(BLOG_TONES[0]);
   const [length, setLength] = useState(BLOG_LENGTHS[1]);
@@ -78,11 +196,12 @@ const BlogPostGenerator: React.FC<BlogPostGeneratorProps> = ({ onSubmit, onGener
   const [topicIdeas, setTopicIdeas] = useState<TopicIdea[]>([]);
   const [topicError, setTopicError] = useState<string | null>(null);
   const [topicCategory, setTopicCategory] = useState(TOPIC_CATEGORIES[0]);
+  const [selectedProfile, setSelectedProfile] = useState<BlogProfile | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (topic.trim() && !isLoading) {
-      onSubmit(topic, tone, length, audience);
+      onSubmit(topic, tone, length, audience, selectedProfile);
     }
   };
   
@@ -107,13 +226,17 @@ const BlogPostGenerator: React.FC<BlogPostGeneratorProps> = ({ onSubmit, onGener
     <div className="flex flex-col gap-6">
        <details className="group rounded-lg bg-gray-900/30 border border-gray-700/50 transition-all duration-300 open:border-indigo-500/50">
         <summary className="cursor-pointer list-none flex items-center justify-between p-3 font-semibold text-gray-300">
-          <span>Blog Post Profile & Signature</span>
+          <span>Blog Post Profiles & Signatures</span>
           <svg className="h-5 w-5 text-gray-400 transition-transform duration-200 group-open:rotate-90" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
           </svg>
         </summary>
         <div className="p-4 pt-0">
-          <BlogProfileEditor profile={blogProfile} onSave={onSaveProfile} />
+          <BlogProfilesManager
+            profiles={blogProfiles}
+            onUpdateProfiles={onUpdateProfiles}
+            onProfileSelect={setSelectedProfile}
+          />
         </div>
       </details>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">

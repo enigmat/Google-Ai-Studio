@@ -759,7 +759,17 @@ export const generateBlogTopicIdeas = async (category: string): Promise<{topic: 
         // Find the first occurrence of a JSON array. This is more robust than assuming the whole string is JSON.
         const jsonMatch = text.match(/(\[[\s\S]*\])/);
         if (!jsonMatch) {
-            throw new Error("The model did not return a valid JSON array.");
+            // Fallback for non-json responses
+            if (text.includes("I am unable to fulfill this request")) {
+                 throw new Error("The model was unable to generate topic ideas for this category.");
+            }
+            console.error("Model did not return a JSON array, attempting to parse as-is:", text);
+             try {
+                // Attempt to parse the whole string, it might be a malformed JSON without the markdown fences.
+                return JSON.parse(text);
+            } catch(e) {
+                throw new Error("The model did not return a valid JSON array.");
+            }
         }
         try {
             return JSON.parse(jsonMatch[0]);
