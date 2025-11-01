@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 // FIX: Added all missing function and type imports from geminiService to resolve compilation errors.
-import { generateImageFromPrompt, enhancePrompt, imageAction, generateImageFromReference, generateVideoFromPrompt, generateVideoFromImage, SocialMediaPost, VideoScene, MusicVideoScene, generateImageMetadata, getPromptInspiration, generatePromptFromImage, generateUgcProductAd, generateProductScene, generateMockup, generateBlogPost, generateSocialMediaPost, generateVideoScriptFromText, generateMusicVideoScript, generateLyricsStoryboard, LyricsScene, generateLipSyncVideo, BusinessName, generateBusinessNames, EmailCampaign, generateEmailCampaign, CompanyProfile, EbookIdea, generateEbookIdea, generateRecipePost, generateBlogTopicIdeas, generateRecipeTopicIdeas, generatePoem } from './services/geminiService';
+import { generateImageFromPrompt, enhancePrompt, imageAction, generateImageFromReference, generateVideoFromPrompt, generateVideoFromImage, SocialMediaPost, VideoScene, MusicVideoScene, generateImageMetadata, getPromptInspiration, generatePromptFromImage, generateUgcProductAd, generateProductScene, generateMockup, generateBlogPost, generateSocialMediaPost, generateVideoScriptFromText, generateMusicVideoScript, generateLyricsStoryboard, LyricsScene, generateLipSyncVideo, BusinessName, generateBusinessNames, EmailCampaign, generateEmailCampaign, CompanyProfile, EbookIdea, generateEbookIdea, generateRecipePost, generateBlogTopicIdeas, generateRecipeTopicIdeas, generatePoem, BlogProfile } from './services/geminiService';
 import { saveImageToAirtable, AirtableConfig, getRandomPromptFromAirtable, getPromptsFromAirtable, updateAirtableRecord } from './services/airtableService';
 import Header from './components/Header';
 import PromptInput from './components/PromptInput';
@@ -434,6 +434,7 @@ const AppContent: React.FC = () => {
   // Blog Post state
   const [blogPostContent, setBlogPostContent] = useState<string | null>(null);
   const [poemContent, setPoemContent] = useState<string | null>(null);
+  const [blogProfile, setBlogProfile] = useState<BlogProfile | null>(null);
   // Social Media state
   const [socialMediaPosts, setSocialMediaPosts] = useState<SocialMediaPost[] | null>(null);
   // Business Name state
@@ -485,6 +486,7 @@ const AppContent: React.FC = () => {
   const STORAGE_KEY = 'ai-generated-images-v2';
   const AIRTABLE_CONFIG_KEY = 'airtable-config';
   const COMPANY_PROFILE_KEY = 'company-profile';
+  const BLOG_PROFILE_KEY = 'blog-profile';
 
   useEffect(() => {
     // This check is for video features which require a user-selected API key.
@@ -536,6 +538,16 @@ const AppContent: React.FC = () => {
       }
     } catch (err) {
       console.error("Failed to load company profile from local storage:", err);
+    }
+    
+    // Load blog profile
+    try {
+      const blogProfileJson = localStorage.getItem(BLOG_PROFILE_KEY);
+      if (blogProfileJson) {
+          setBlogProfile(JSON.parse(blogProfileJson));
+      }
+    } catch (err) {
+      console.error("Failed to load blog profile from local storage:", err);
     }
   }, []);
   
@@ -1288,7 +1300,7 @@ const AppContent: React.FC = () => {
     setLyricsVideoStoryboard(null);
     
     try {
-      const content = await generateBlogPost(topic, tone, length, audience);
+      const content = await generateBlogPost(topic, tone, length, audience, blogProfile);
       setBlogPostContent(content);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
@@ -1297,7 +1309,7 @@ const AppContent: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [blogProfile]);
 
   const handleGeneratePoem = useCallback(async (topic: string, style: string, mood: string) => {
     setIsLoading(true);
@@ -1422,6 +1434,12 @@ const AppContent: React.FC = () => {
     setCompanyProfile(profile);
     localStorage.setItem(COMPANY_PROFILE_KEY, JSON.stringify(profile));
     showToast('Company profile saved!', 'success');
+  };
+
+  const handleSaveBlogProfile = (profile: BlogProfile) => {
+    setBlogProfile(profile);
+    localStorage.setItem(BLOG_PROFILE_KEY, JSON.stringify(profile));
+    showToast('Blog profile saved!', 'success');
   };
 
   const handleGenerateEmailCampaign = useCallback(async (productName: string, productDescription: string, audience: string, campaignType: string, tone: string) => {
@@ -2275,7 +2293,13 @@ ${info ? `- Additional Info: "${info}"` : ''}
             {mode === 'blog-post' && (
               <>
                 <h2 className="text-xl font-bold text-indigo-400">Blog Post Generator</h2>
-                <BlogPostGenerator onSubmit={handleGenerateBlogPost} onGenerateHeader={handleGenerateImageFromTopicIdea} isLoading={isLoading} />
+                <BlogPostGenerator
+                  onSubmit={handleGenerateBlogPost}
+                  onGenerateHeader={handleGenerateImageFromTopicIdea}
+                  isLoading={isLoading}
+                  blogProfile={blogProfile}
+                  onSaveProfile={handleSaveBlogProfile}
+                />
               </>
             )}
             

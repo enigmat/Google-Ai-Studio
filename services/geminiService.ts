@@ -47,6 +47,13 @@ export interface CompanyProfile {
   website: string;
 }
 
+export interface BlogProfile {
+  companyName: string;
+  website: string;
+  twitter: string;
+  linkedIn: string;
+}
+
 export interface EbookIdea {
   title: string;
   logline: string;
@@ -500,12 +507,29 @@ export const generateMockup = async (designUrl: string, mockupUrl: string, promp
 };
 
 // --- Text Generation ---
-export const generateBlogPost = async (topic: string, tone: string, length: string, audience: string): Promise<string> => {
+export const generateBlogPost = async (topic: string, tone: string, length: string, audience: string, blogProfile: BlogProfile | null): Promise<string> => {
     const aiClient = getAiClient();
+    let signatureInstruction = '';
+    if (blogProfile && blogProfile.companyName) {
+        const links = [];
+        if (blogProfile.website) links.push(`<a href="${blogProfile.website}" target="_blank" rel="noopener noreferrer">Website</a>`);
+        if (blogProfile.twitter) links.push(`<a href="https://twitter.com/${blogProfile.twitter.replace('@', '')}" target="_blank" rel="noopener noreferrer">Twitter</a>`);
+        if (blogProfile.linkedIn) links.push(`<a href="${blogProfile.linkedIn}" target="_blank" rel="noopener noreferrer">LinkedIn</a>`);
+
+        const signatureHtml = `
+<hr style="margin-top: 2rem; border-color: #4b5563;">
+<div style="margin-top: 1rem; font-size: 0.9em; color: #d1d5db; text-align: left;">
+    <p style="font-weight: bold;">Written by ${blogProfile.companyName}</p>
+    ${links.length > 0 ? `<p>${links.join(' | ')}</p>` : ''}
+</div>
+        `.trim();
+        signatureInstruction = `\n\nAfter the main content of the blog post, append the following HTML block exactly as provided, without any modifications:\n\n${signatureHtml}`;
+    }
+    
     try {
         const response = await aiClient.models.generateContent({
             model: "gemini-2.5-flash",
-            contents: `Write a blog post about "${topic}". The tone should be ${tone}. The desired length is ${length}. The target audience is ${audience}. Format the output as clean HTML with headings, paragraphs, and lists.`,
+            contents: `Write a blog post about "${topic}". The tone should be ${tone}. The desired length is ${length}. The target audience is ${audience}. Format the output as clean HTML with headings, paragraphs, and lists.${signatureInstruction}`,
         });
         return response.text.trim();
     } catch (error) {
@@ -531,6 +555,31 @@ export const generatePoem = async (topic: string, style: string, mood: string): 
             throw new Error(`Gemini API Error: ${error.message}`);
         }
         throw new Error("An unknown error occurred while generating the poem.");
+    }
+};
+
+export const generatePoemTopicIdeas = async (): Promise<string[]> => {
+    const aiClient = getAiClient();
+    try {
+        const response = await aiClient.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Generate 5 creative, evocative, and poetic topic ideas. The topics should be suitable for writing a poem about. Respond with a JSON array of strings.`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                },
+            },
+        });
+        const jsonStr = response.text.trim();
+        return JSON.parse(jsonStr);
+    } catch (error) {
+        console.error("Error generating poem topic ideas with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while generating poem topic ideas.");
     }
 };
 
@@ -701,25 +750,23 @@ export const generateBlogTopicIdeas = async (category: string): Promise<{topic: 
     try {
         const response = await aiClient.models.generateContent({
             model: "gemini-2.5-flash",
-            contents: `Based on current trends for today, generate 5 trending blog post topic ideas for the category "${category}". For each topic, also provide a creative, visually descriptive prompt suitable for generating a header image for the blog post.`,
+            contents: `Based on current trends for today, generate 5 trending blog post topic ideas for the category "${category}". For each topic, also provide a creative, visually descriptive prompt suitable for generating a header image for the blog post. Respond with ONLY a valid JSON array of objects, where each object has a "topic" key and an "imagePrompt" key. Do not include any other text, explanations, or markdown formatting.`,
             config: {
                 tools: [{googleSearch: {}}],
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            topic: { type: Type.STRING, description: 'The trending blog post topic.' },
-                            imagePrompt: { type: Type.STRING, description: 'A visually descriptive prompt to generate a header image for the topic.' }
-                        },
-                        required: ['topic', 'imagePrompt']
-                    }
-                },
             },
         });
-        const jsonStr = response.text.trim();
-        return JSON.parse(jsonStr);
+        const text = response.text.trim();
+        // Find the first occurrence of a JSON array. This is more robust than assuming the whole string is JSON.
+        const jsonMatch = text.match(/(\[[\s\S]*\])/);
+        if (!jsonMatch) {
+            throw new Error("The model did not return a valid JSON array.");
+        }
+        try {
+            return JSON.parse(jsonMatch[0]);
+        } catch (parseError) {
+            console.error("Failed to parse JSON from model response:", jsonMatch[0]);
+            throw new Error("The model returned a malformed JSON response.");
+        }
     } catch (error) {
         console.error("Error generating blog topic ideas with Gemini API:", error);
         if (error instanceof Error) {
