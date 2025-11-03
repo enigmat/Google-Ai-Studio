@@ -2,6 +2,7 @@ export type GeneratorMode =
   | 'text-to-image'
   | 'image-variations'
   | 'ugc-ad'
+  | 'ugc-video-ad'
   | 'text-to-video'
   | 'animate-image'
   | 'video-green-screen'

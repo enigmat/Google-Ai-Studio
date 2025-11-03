@@ -53,6 +53,7 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ mode, setMode }) => {
             <ModeButton currentMode={mode} targetMode="product-studio" setMode={setMode}>Product Studio</ModeButton>
             <ModeButton currentMode={mode} targetMode="tshirt-mockup" setMode={setMode}>T-shirt Mockup</ModeButton>
             <ModeButton currentMode={mode} targetMode="ugc-ad" setMode={setMode}>UGC Ad</ModeButton>
+            <ModeButton currentMode={mode} targetMode="ugc-video-ad" setMode={setMode}>UGC Video</ModeButton>
             <ModeButton currentMode={mode} targetMode="blog-post" setMode={setMode}>Blog Post</ModeButton>
             <ModeButton currentMode={mode} targetMode="poem-writer" setMode={setMode}>Poem</ModeButton>
             <ModeButton currentMode={mode} targetMode="recipe-post" setMode={setMode}>Recipe Post</ModeButton>

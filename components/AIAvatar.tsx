@@ -78,6 +78,11 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
     "Use a clear, high-quality product image for the best results.",
     "A detailed product description helps the AI create a more relevant ad.",
   ],
+  'ugc-video-ad': [
+    "Upload a clear product image. This will be the star of your video!",
+    "Describe a simple action for the motion prompt, like 'slowly rotating' or 'a hand picking up the product'.",
+    "Keep the video duration short for a punchy social media ad."
+  ],
   'text-to-video': [
     "Start with 'Generate Preview' to quickly test your video idea.",
     "Cinematic styles can add a dramatic flair to your creations.",

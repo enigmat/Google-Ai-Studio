@@ -19,6 +19,7 @@ import ReferenceImageDisplay from './components/ReferenceImageDisplay';
 import { STYLES, ASPECT_RATIOS, VIDEO_STYLES, GeneratorMode, THUMBNAIL_STYLES, BUSINESS_NAME_STYLES, EMAIL_CAMPAIGN_TYPES, BLOG_TONES } from './constants';
 import ModeSelector from './components/ModeSelector';
 import UgcAdGenerator from './components/UgcAdGenerator';
+import UgcVideoAdGenerator from './components/UgcVideoAdGenerator';
 import VideoGenerator from './components/VideoGenerator';
 import VideoDisplay from './components/VideoDisplay';
 import ImageToVideoGenerator from './components/ImageToVideoGenerator';
@@ -609,7 +610,7 @@ const AppContent: React.FC = () => {
   
   const handleSetMode = (newMode: GeneratorMode) => {
     const isNewModeTextual = ['blog-post', 'social-media-post', 'email-campaign', 'ebook-idea', 'recipe-post', 'poem-writer'].includes(newMode);
-    const isNewModeVideo = newMode.endsWith('video') || newMode === 'animate-image' || newMode === 'video-green-screen' || newMode === 'lyrics-to-video' || newMode === 'lip-sync' || newMode === 'gif-generator';
+    const isNewModeVideo = newMode.endsWith('video') || ['animate-image', 'video-green-screen', 'lyrics-to-video', 'lip-sync', 'gif-generator', 'ugc-video-ad'].includes(newMode);
     
     if (isNewModeTextual || isNewModeVideo || ['product-studio', 'tshirt-mockup', 'avatar-generator', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'music-video', 'title-to-image', 'audio-to-text', 'business-name-generator', 'book-cover', 'book-mockup'].includes(newMode)) {
       setImageUrls(null);
@@ -1058,6 +1059,56 @@ const AppContent: React.FC = () => {
           setHasApiKey(false);
       } else {
           setError(`Failed to generate video from image: ${message}`);
+      }
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [videoDuration, videoStyle]);
+
+  const handleGenerateUgcVideoAd = useCallback(async (productImageUrl: string, productName: string, productDescription: string, motionPrompt: string, isPreview: boolean) => {
+    const setLoading = isPreview ? setIsPreviewLoading : setIsLoading;
+    const setUrl = isPreview ? setPreviewVideoUrl : setFinalVideoUrl;
+    
+    setLoading(true);
+    setError(null);
+    setImageUrls(null);
+    setGeneratedImagesData([]);
+    setBlogPostContent(null);
+    setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
+    setEbookIdea(null);
+    setPoemContent(null);
+    setVideoStoryboard(null);
+    setMusicVideoStoryboard(null);
+    setLyricsVideoStoryboard(null);
+
+    if (isPreview) {
+        setPreviewVideoUrl(null);
+    } else {
+        setFinalVideoUrl(null);
+    }
+
+    const ugcPrompt = `Create a realistic User-Generated Content (UGC) style video ad. The video should feature the provided product: '${productName}'. The scene should look authentic, as if a real customer is using and enjoying the product in a natural, everyday setting. The product description is: '${productDescription}'.`;
+    const finalPrompt = `${ugcPrompt}. Video motion description: ${motionPrompt}`;
+
+    const style = VIDEO_STYLES.find(s => s.name === videoStyle);
+    const styledPrompt = style ? `${finalPrompt}${style.promptSuffix}` : finalPrompt;
+
+    try {
+      const resultUrl = await generateVideoFromImage(productImageUrl, styledPrompt, videoDuration, isPreview);
+      setUrl(resultUrl);
+      if (isPreview) {
+          setFinalVideoUrl(null);
+      }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+      if (message.includes("Requested entity was not found.")) {
+          setError("Your API key may be invalid or lack permissions for this model. Please select a valid API key and try again.");
+          setHasApiKey(false);
+      } else {
+          setError(`Failed to generate UGC video ad: ${message}`);
       }
       console.error(e);
     } finally {
@@ -2077,13 +2128,13 @@ ${info ? `- Additional Info: "${info}"` : ''}
 
   const isAnyLoading = isLoading || isPreviewLoading || isEnhancing || isInspiring || isFetchingFromAirtable;
   const isImageDisplayMode = ['text-to-image', 'image-variations', 'ugc-ad', 'product-studio', 'tshirt-mockup', 'avatar-generator', 'creative-chat', 'image-to-prompt', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'title-to-image', 'book-cover', 'book-mockup'].includes(mode);
-  const isVideoDisplayMode = ['text-to-video', 'animate-image', 'video-green-screen', 'lip-sync', 'gif-generator'].includes(mode);
+  const isVideoDisplayMode = ['text-to-video', 'animate-image', 'video-green-screen', 'lip-sync', 'gif-generator', 'ugc-video-ad'].includes(mode);
   const isTextDisplayMode = ['blog-post', 'social-media-post', 'email-campaign', 'ebook-idea', 'recipe-post', 'poem-writer'].includes(mode);
   const isBusinessNameDisplayMode = mode === 'business-name-generator';
   const isMusicVideoDisplayMode = mode === 'music-video';
   const isLyricsVideoDisplayMode = mode === 'lyrics-to-video';
   const isAudioDisplayMode = mode === 'audio-to-text';
-  const isVideoMode = ['text-to-video', 'animate-image', 'video-green-screen', 'gif-generator', 'explainer-video', 'lyrics-to-video', 'lip-sync'].includes(mode);
+  const isVideoMode = ['text-to-video', 'animate-image', 'video-green-screen', 'gif-generator', 'explainer-video', 'lyrics-to-video', 'lip-sync', 'ugc-video-ad'].includes(mode);
 
   if (isVideoMode && !hasApiKey) {
     return (
@@ -2284,6 +2335,20 @@ ${info ? `- Additional Info: "${info}"` : ''}
                 <h2 className="text-xl font-bold text-indigo-400">UGC Ad Generator</h2>
                 <UgcAdGenerator onSubmit={handleGenerateUgcAd} isLoading={isLoading} />
               </>
+            )}
+
+            {mode === 'ugc-video-ad' && (
+                <>
+                    <h2 className="text-xl font-bold text-indigo-400">UGC Video Ad Generator</h2>
+                    <UgcVideoAdGenerator
+                        onSubmit={handleGenerateUgcVideoAd}
+                        isLoading={isLoading}
+                        isPreviewLoading={isPreviewLoading}
+                        hasPreview={!!previewVideoUrl}
+                    />
+                    <VideoDurationSelector duration={videoDuration} setDuration={setVideoDuration} isLoading={isAnyLoading} />
+                    <VideoStyleSelector selectedStyle={videoStyle} setSelectedStyle={setVideoStyle} isLoading={isAnyLoading} />
+                </>
             )}
 
              {mode === 'product-studio' && (
