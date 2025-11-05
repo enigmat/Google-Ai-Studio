@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Loader from './Loader';
 import { EbookTopic } from '../services/geminiService';
 import TTSButton from './TTSButton';
@@ -8,6 +8,7 @@ interface EbookTopicDisplayProps {
   isLoading: boolean;
   onSelectTopic: (topic: string, description: string) => void;
   sources: any[] | null;
+  onSaveTopics: (topics: EbookTopic[]) => void;
 }
 
 const GroundingSourcesDisplay: React.FC<{ sources: any[] }> = ({ sources }) => (
@@ -31,7 +32,17 @@ const GroundingSourcesDisplay: React.FC<{ sources: any[] }> = ({ sources }) => (
 );
 
 
-const EbookTopicDisplay: React.FC<EbookTopicDisplayProps> = ({ topics, isLoading, onSelectTopic, sources }) => {
+const EbookTopicDisplay: React.FC<EbookTopicDisplayProps> = ({ topics, isLoading, onSelectTopic, sources, onSaveTopics }) => {
+  const [justSaved, setJustSaved] = useState(false);
+
+  const handleSave = () => {
+    if (topics) {
+      onSaveTopics(topics);
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 3000);
+    }
+  };
+
   return (
     <div className="relative w-full h-full min-h-[500px] bg-gray-800 border-2 border-dashed border-gray-700 rounded-lg flex flex-col p-4 transition-all duration-300">
       {isLoading ? (
@@ -40,6 +51,25 @@ const EbookTopicDisplay: React.FC<EbookTopicDisplayProps> = ({ topics, isLoading
         </div>
       ) : topics ? (
         <div className="w-full h-full overflow-y-auto pr-2 space-y-4">
+            <div className="flex justify-end">
+                <button
+                    onClick={handleSave}
+                    disabled={justSaved || isLoading}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 transition-all duration-200 bg-green-600 text-white hover:bg-green-700 focus:ring-green-500 disabled:bg-green-900 disabled:text-gray-400 disabled:cursor-not-allowed"
+                >
+                    {justSaved ? (
+                        <>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                            <span>Saved!</span>
+                        </>
+                    ) : (
+                        <>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v12l-5-3.125L5 16V4z" /></svg>
+                            <span>Save All Topics</span>
+                        </>
+                    )}
+                </button>
+            </div>
            {sources && sources.length > 0 && <GroundingSourcesDisplay sources={sources} />}
           {topics.map((item, index) => (
             <div key={index} className="bg-gray-900/50 p-4 rounded-lg border border-gray-700 flex flex-col gap-3">

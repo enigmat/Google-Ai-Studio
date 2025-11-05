@@ -405,6 +405,96 @@ const GroundingSourcesDisplay: React.FC<{ sources: any[] }> = ({ sources }) => (
     </div>
 );
 
+const SavedTopicsGallery: React.FC<{
+  topics: EbookTopic[];
+  onDeleteTopic: (topic: string) => void;
+  onClearAll: () => void;
+  onUseTopic: (topic: string, description: string) => void;
+}> = ({ topics, onDeleteTopic, onClearAll, onUseTopic }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredTopics = React.useMemo(() => {
+    if (!searchQuery.trim()) {
+      return topics;
+    }
+    const lowercasedQuery = searchQuery.toLowerCase();
+    return topics.filter(t => 
+      t.topic.toLowerCase().includes(lowercasedQuery) ||
+      t.description.toLowerCase().includes(lowercasedQuery) ||
+      t.keywords.some(kw => kw.toLowerCase().includes(lowercasedQuery))
+    );
+  }, [topics, searchQuery]);
+
+  if (topics.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-4 sm:p-6 mt-8">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
+        <h2 className="text-2xl font-bold text-indigo-400">Your Saved Topics</h2>
+      </div>
+      
+      <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="relative flex-grow">
+          <input 
+            type="text"
+            placeholder="Search your topics by title, description, or keyword..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" /></svg>
+        </div>
+        <button
+            onClick={onClearAll}
+            className="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-red-500 transition-colors"
+        >
+            Clear All
+        </button>
+      </div>
+
+      {filteredTopics.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredTopics.map((item) => (
+            <div key={item.topic} className="bg-gray-900/50 p-4 rounded-lg border border-gray-700 flex flex-col justify-between gap-3">
+                <div>
+                    <h3 className="text-lg font-bold text-indigo-400">{item.topic}</h3>
+                    <p className="text-sm text-gray-400 mt-1 line-clamp-3">{item.description}</p>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {item.keywords.slice(0, 5).map(kw => <span key={kw} className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded-full">{kw}</span>)}
+                </div>
+                <div className="flex items-center gap-2 mt-2 pt-3 border-t border-gray-700/50">
+                  <button
+                      onClick={() => onUseTopic(item.topic, item.description)}
+                      className="flex-grow text-sm font-semibold px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  >
+                      Write Chapter
+                  </button>
+                   <button
+                        onClick={() => onDeleteTopic(item.topic)}
+                        title="Delete Topic"
+                        className="p-2 bg-red-600/50 text-red-300 rounded-lg hover:bg-red-600/80 hover:text-white transition-colors"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" />
+                        </svg>
+                   </button>
+                </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+         <div className="text-center py-10 text-gray-500">
+          <h3 className="text-lg font-semibold">No results found</h3>
+          <p>Try adjusting your search query.</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AppContent: React.FC = () => {
   const [prompt, setPrompt] = useState<string>('');
   const [promptBeforeEnhance, setPromptBeforeEnhance] = useState<string | null>(null);
@@ -455,6 +545,7 @@ const AppContent: React.FC = () => {
   const [ebookContent, setEbookContent] = useState<string | null>(null);
   // Ebook Topic state
   const [ebookTopics, setEbookTopics] = useState<EbookTopic[] | null>(null);
+  const [savedEbookTopics, setSavedEbookTopics] = useState<EbookTopic[]>([]);
   // AI Content Analyzer state
   const [aiAnalysisResult, setAiAnalysisResult] = useState<AIAnalysisResult | null>(null);
   const [humanizedText, setHumanizedText] = useState<string | null>(null);
@@ -503,6 +594,7 @@ const AppContent: React.FC = () => {
   const AIRTABLE_CONFIG_KEY = 'airtable-config';
   const COMPANY_PROFILE_KEY = 'company-profile';
   const BLOG_PROFILES_KEY = 'blog-profiles';
+  const SAVED_TOPICS_KEY = 'ai-saved-ebook-topics';
 
   useEffect(() => {
     // This check is for video features which require a user-selected API key.
@@ -534,6 +626,16 @@ const AppContent: React.FC = () => {
       }
     } catch (err) {
       console.error("Failed to load saved images from local storage:", err);
+    }
+
+    // Load saved topics
+    try {
+      const savedTopicsJson = localStorage.getItem(SAVED_TOPICS_KEY);
+      if (savedTopicsJson) {
+          setSavedEbookTopics(JSON.parse(savedTopicsJson));
+      }
+    } catch (err) {
+      console.error("Failed to load saved topics from local storage:", err);
     }
 
     // Load airtable config
@@ -1735,6 +1837,39 @@ const AppContent: React.FC = () => {
     }
   }, []);
 
+  const handleSaveEbookTopics = (topicsToSave: EbookTopic[]) => {
+    setSavedEbookTopics(currentSaved => {
+        const newTopics = topicsToSave.filter(
+            topicToSave => !currentSaved.some(savedTopic => savedTopic.topic === topicToSave.topic)
+        );
+        if (newTopics.length === 0) {
+            showToast('All currently displayed topics are already saved!', 'success');
+            return currentSaved;
+        }
+        const updatedSaved = [...newTopics, ...currentSaved];
+        localStorage.setItem(SAVED_TOPICS_KEY, JSON.stringify(updatedSaved));
+        showToast(`${newTopics.length} new topic(s) saved!`, 'success');
+        return updatedSaved;
+    });
+  };
+
+  const handleDeleteEbookTopic = (topicToDelete: string) => {
+      setSavedEbookTopics(currentSaved => {
+          const updatedTopics = currentSaved.filter(topic => topic.topic !== topicToDelete);
+          localStorage.setItem(SAVED_TOPICS_KEY, JSON.stringify(updatedTopics));
+          showToast('Topic deleted.', 'success');
+          return updatedTopics;
+      });
+  };
+  
+  const handleClearAllEbookTopics = () => {
+      if (window.confirm('Are you sure you want to delete all saved topics? This cannot be undone.')) {
+          setSavedEbookTopics([]);
+          localStorage.removeItem(SAVED_TOPICS_KEY);
+          showToast('Saved topics cleared.', 'success');
+      }
+  };
+
   const handleUseEbookTopic = useCallback((topic: string, description: string) => {
     showToast('Topic copied! Paste it into the Ebook Writer to start your chapter.', 'success');
     navigator.clipboard.writeText(`Topic: ${topic}\n\nOutline Start:\n${description}`);
@@ -2851,7 +2986,7 @@ ${info ? `- Additional Info: "${info}"` : ''}
                 {mode === 'email-campaign' && <EmailCampaignDisplay campaigns={emailCampaigns} isLoading={isLoading} />}
                 {mode === 'ebook-idea' && <EbookIdeaDisplay idea={ebookIdea} isLoading={isLoading} onGenerateCoverClick={handleGenerateCoverForEbook} />}
                 {mode === 'ebook-writer' && <EbookDisplay content={ebookContent} isLoading={isLoading} />}
-                {mode === 'ebook-topic-analyzer' && <EbookTopicDisplay topics={ebookTopics} isLoading={isLoading} onSelectTopic={handleUseEbookTopic} sources={groundingSources} />}
+                {mode === 'ebook-topic-analyzer' && <EbookTopicDisplay topics={ebookTopics} isLoading={isLoading} onSelectTopic={handleUseEbookTopic} sources={groundingSources} onSaveTopics={handleSaveEbookTopics} />}
               </>
             )}
              {isBusinessNameDisplayMode && (
@@ -2902,6 +3037,12 @@ ${info ? `- Additional Info: "${info}"` : ''}
             savingToAirtableState={savingToAirtableState}
             showSaveConfirmation={showSaveConfirmation}
             isGeneratingMetadata={isGeneratingMetadata}
+        />
+        <SavedTopicsGallery
+            topics={savedEbookTopics}
+            onDeleteTopic={handleDeleteEbookTopic}
+            onClearAll={handleClearAllEbookTopics}
+            onUseTopic={handleUseEbookTopic}
         />
       </main>
       <Footer />
