@@ -59,7 +59,9 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ mode, setMode }) => {
             <ModeButton currentMode={mode} targetMode="recipe-post" setMode={setMode}>Recipe Post</ModeButton>
             <ModeButton currentMode={mode} targetMode="social-media-post" setMode={setMode}>Social Media</ModeButton>
             <ModeButton currentMode={mode} targetMode="email-campaign" setMode={setMode}>Email Campaign</ModeButton>
+            <ModeButton currentMode={mode} targetMode="ebook-topic-analyzer" setMode={setMode}>Ebook Topics</ModeButton>
             <ModeButton currentMode={mode} targetMode="ebook-idea" setMode={setMode}>Ebook Idea</ModeButton>
+            <ModeButton currentMode={mode} targetMode="ebook-writer" setMode={setMode}>Ebook Writer</ModeButton>
             <ModeButton currentMode={mode} targetMode="book-cover" setMode={setMode}>Book Cover</ModeButton>
             <ModeButton currentMode={mode} targetMode="book-mockup" setMode={setMode}>Book Mockup</ModeButton>
         </div>
@@ -85,6 +87,14 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ mode, setMode }) => {
         <h3 className="text-sm font-semibold text-gray-500 mb-2 px-1">Audio Tools</h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 w-full bg-gray-800 rounded-lg p-1 border border-gray-700">
             <ModeButton currentMode={mode} targetMode="audio-to-text" setMode={setMode}>Audio-to-Text</ModeButton>
+        </div>
+      </div>
+
+      {/* Category: Editing & Tools */}
+      <div>
+        <h3 className="text-sm font-semibold text-gray-500 mb-2 px-1">Editing & Tools</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 w-full bg-gray-800 rounded-lg p-1 border border-gray-700">
+            <ModeButton currentMode={mode} targetMode="ai-content-analyzer" setMode={setMode}>AI Content Analyzer</ModeButton>
         </div>
       </div>
     </div>

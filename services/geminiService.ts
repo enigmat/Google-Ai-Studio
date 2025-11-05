@@ -1,5 +1,3 @@
-
-
 import { GoogleGenAI, Modality, Type, GenerateContentResponse, LiveServerMessage, Blob, CloseEvent, ErrorEvent } from "@google/genai";
 
 // --- API KEY MANAGEMENT ---
@@ -60,6 +58,17 @@ export interface EbookIdea {
   summary: string;
   characters: { name: string; description: string }[];
   themes: string[];
+}
+
+export interface EbookTopic {
+  topic: string;
+  description: string;
+  keywords: string[];
+}
+
+export interface AIAnalysisResult {
+    ai_percentage: number;
+    rationale: string;
 }
 
 export interface VideoScene {
@@ -541,6 +550,72 @@ export const generateBlogPost = async (topic: string, tone: string, length: stri
     }
 };
 
+export const generateEbookChapter = async (ebookTitle: string, chapterTopic: string, outline: string, tone: string, audience: string): Promise<string> => {
+    const aiClient = getAiClient();
+    try {
+        const response = await aiClient.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Write a chapter for an ebook.
+- Ebook Title (optional): "${ebookTitle}"
+- Chapter Title/Topic: "${chapterTopic}"
+- Tone: ${tone}
+- Audience: ${audience}
+- Chapter Outline: """${outline}"""
+
+Based on the outline, write a well-structured and engaging chapter. Format the output as clean HTML with headings (h1, h2, h3), paragraphs (p), and other appropriate tags. The H1 should be the chapter title.`,
+        });
+        return response.text.trim();
+    } catch (error) {
+        console.error("Error generating ebook chapter with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while generating the ebook chapter.");
+    }
+};
+
+export const generateEbookTopics = async (keyword: string): Promise<{topics: EbookTopic[], sources: any[]}> => {
+  const aiClient = getAiClient();
+  try {
+    const response = await aiClient.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `Based on current internet trends and search data, generate a list of 5 popular and engaging ebook topics related to the keyword "${keyword}". For each topic, provide a short, compelling description and a list of relevant keywords.`,
+      config: {
+        tools: [{ googleSearch: {} }],
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              topic: { type: Type.STRING, description: "The main topic or title for a potential ebook." },
+              description: { type: Type.STRING, description: "A one or two-sentence description of what the ebook could be about." },
+              keywords: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING }
+              }
+            },
+            required: ['topic', 'description', 'keywords']
+          }
+        }
+      },
+    });
+
+    const jsonStr = response.text.trim();
+    const topics = JSON.parse(jsonStr);
+    const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+    
+    return { topics, sources };
+
+  } catch (error) {
+    console.error("Error generating ebook topics:", error);
+    if (error instanceof Error) {
+        throw new Error(`Gemini API Error: ${error.message}`);
+    }
+    throw new Error("An unknown error occurred while generating ebook topics.");
+  }
+};
+
 export const generatePoem = async (topic: string, style: string, mood: string): Promise<string> => {
     const aiClient = getAiClient();
     try {
@@ -850,6 +925,66 @@ Format the entire output as clean, well-structured HTML, using <h1> for the titl
             throw new Error(`Gemini API Error: ${error.message}`);
         }
         throw new Error("An unknown error occurred while generating the recipe post.");
+    }
+};
+
+export const analyzeAIContent = async (text: string): Promise<AIAnalysisResult> => {
+    const aiClient = getAiClient();
+    try {
+        const response = await aiClient.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `You are an expert AI content detector. Analyze the following text and determine the likelihood that it was written by an AI. Look for patterns like unnatural phrasing, excessive formality, lack of personal voice, and repetitive sentence structures. Provide your analysis in a JSON format.
+TEXT TO ANALYZE: """${text}"""`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        ai_percentage: {
+                            type: Type.INTEGER,
+                            description: "A number from 0 to 100 representing the likelihood the text is AI-generated."
+                        },
+                        rationale: {
+                            type: Type.STRING,
+                            description: "A brief explanation for your reasoning, pointing out specific examples from the text."
+                        }
+                    },
+                    required: ['ai_percentage', 'rationale']
+                },
+            },
+        });
+        const jsonStr = response.text.trim();
+        return JSON.parse(jsonStr);
+    } catch (error) {
+        console.error("Error analyzing content with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while analyzing the content.");
+    }
+};
+
+export const humanizeText = async (text: string): Promise<string> => {
+    const aiClient = getAiClient();
+    try {
+        const response = await aiClient.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `You are an expert copy editor specializing in making AI-generated text sound more human and natural. Rewrite the following text to evade AI detection.
+- Vary sentence structure and length.
+- Introduce more natural vocabulary, common idioms, and a conversational tone where appropriate.
+- Add a subtle personal voice.
+- Eliminate repetitive phrasing and overly formal language.
+- Ensure the core meaning and information of the original text are preserved.
+Respond only with the rewritten text, with no extra explanations or conversational text.
+ORIGINAL TEXT: """${text}"""`,
+        });
+        return response.text.trim();
+    } catch (error) {
+        console.error("Error humanizing text with Gemini API:", error);
+        if (error instanceof Error) {
+            throw new Error(`Gemini API Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while humanizing the text.");
     }
 };
 

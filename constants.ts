@@ -29,8 +29,11 @@ export type GeneratorMode =
   | 'business-name-generator'
   | 'email-campaign'
   | 'ebook-idea'
+  | 'ebook-writer'
   | 'book-cover'
-  | 'book-mockup';
+  | 'book-mockup'
+  | 'ai-content-analyzer'
+  | 'ebook-topic-analyzer';
 
 export const STYLES = [
     { name: 'None', promptSuffix: '' },

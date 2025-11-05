@@ -149,6 +149,17 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
     "The 'Protagonist' field helps you define your main character from the start.",
     "Click 'Generate Cover Art' on your idea to visualize the book!",
   ],
+  // FIX: Added missing 'ebook-writer' property to the MODE_TIPS object to fix compilation error.
+  'ebook-writer': [
+    "Provide a detailed outline for the chapter. The more detail, the better the result!",
+    "Use the 'Ebook Idea Generator' first if you need help coming up with a plot.",
+    "You can generate one chapter at a time to build your entire book.",
+  ],
+  'ebook-topic-analyzer': [
+    "Enter a broad keyword like 'space travel' or 'baking' to get started.",
+    "I'll search the web for trending ideas related to your keyword.",
+    "Use the generated topics as inspiration or a starting point for your next bestseller!",
+  ],
   // FIX: Add missing 'book-cover' property to the MODE_TIPS object to satisfy the Record type.
   'book-cover': [
     "A detailed synopsis with keywords about the mood and genre will create a more powerful cover.",
@@ -171,6 +182,11 @@ const MODE_TIPS: Record<GeneratorMode, string[]> = {
     "Click the microphone to start recording. I'll transcribe your speech in real-time.",
     "For best results, speak clearly and in a quiet environment.",
     "The transcription will appear on the right. You can copy the full text when you're done.",
+  ],
+  'ai-content-analyzer': [
+    "Paste any text to check its likelihood of being AI-generated.",
+    "The analysis looks for patterns in sentence structure, vocabulary, and tone.",
+    "Use the 'Humanize' button to rewrite text, making it sound more natural and less robotic.",
   ],
 };
 

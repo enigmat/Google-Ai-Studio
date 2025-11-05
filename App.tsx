@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 // FIX: Added all missing function and type imports from geminiService to resolve compilation errors.
-import { generateImageFromPrompt, enhancePrompt, imageAction, generateImageFromReference, generateVideoFromPrompt, generateVideoFromImage, SocialMediaPost, VideoScene, MusicVideoScene, generateImageMetadata, getPromptInspiration, generatePromptFromImage, generateUgcProductAd, generateProductScene, generateMockup, generateBlogPost, generateSocialMediaPost, generateVideoScriptFromText, generateMusicVideoScript, generateLyricsStoryboard, LyricsScene, generateLipSyncVideo, BusinessName, generateBusinessNames, EmailCampaign, generateEmailCampaign, CompanyProfile, EbookIdea, generateEbookIdea, generateRecipePost, generateBlogTopicIdeas, generateRecipeTopicIdeas, generatePoem, BlogProfile } from './services/geminiService';
+import { generateImageFromPrompt, enhancePrompt, imageAction, generateImageFromReference, generateVideoFromPrompt, generateVideoFromImage, SocialMediaPost, VideoScene, MusicVideoScene, generateImageMetadata, getPromptInspiration, generatePromptFromImage, generateUgcProductAd, generateProductScene, generateMockup, generateBlogPost, generateSocialMediaPost, generateVideoScriptFromText, generateMusicVideoScript, generateLyricsStoryboard, LyricsScene, generateLipSyncVideo, BusinessName, generateBusinessNames, EmailCampaign, generateEmailCampaign, CompanyProfile, EbookIdea, generateEbookIdea, generateEbookChapter, generateRecipePost, generateBlogTopicIdeas, generateRecipeTopicIdeas, generatePoem, BlogProfile, analyzeAIContent, humanizeText, AIAnalysisResult, EbookTopic, generateEbookTopics } from './services/geminiService';
 import { saveImageToAirtable, AirtableConfig, getRandomPromptFromAirtable, getPromptsFromAirtable, updateAirtableRecord } from './services/airtableService';
 import Header from './components/Header';
 import PromptInput from './components/PromptInput';
@@ -32,6 +32,8 @@ import ProductStudio from './components/ProductStudio';
 import TshirtMockupGenerator from './components/TshirtMockupGenerator';
 import BlogPostGenerator from './components/BlogPostGenerator';
 import BlogPostDisplay from './components/BlogPostDisplay';
+import EbookGenerator from './components/EbookGenerator';
+import EbookDisplay from './components/EbookDisplay';
 import AvatarGenerator from './components/AvatarGenerator';
 import AirtableSettingsModal from './components/AirtableSettingsModal';
 import AirtablePromptLibraryModal from './components/AirtablePromptLibraryModal';
@@ -65,6 +67,10 @@ import GifGenerator from './components/GifGenerator';
 import RecipePostGenerator from './components/RecipePostGenerator';
 import PoemWriterGenerator from './components/PoemWriterGenerator';
 import PoemDisplay from './components/PoemDisplay';
+import AIContentAnalyzer from './components/AIContentAnalyzer';
+import AIContentAnalysisDisplay from './components/AIContentAnalysisDisplay';
+import EbookTopicAnalyzer from './components/EbookTopicAnalyzer';
+import EbookTopicDisplay from './components/EbookTopicDisplay';
 
 
 type AspectRatio = typeof ASPECT_RATIOS[number];
@@ -445,6 +451,15 @@ const AppContent: React.FC = () => {
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
   // Ebook Idea state
   const [ebookIdea, setEbookIdea] = useState<EbookIdea | null>(null);
+  // Ebook Writer state
+  const [ebookContent, setEbookContent] = useState<string | null>(null);
+  // Ebook Topic state
+  const [ebookTopics, setEbookTopics] = useState<EbookTopic[] | null>(null);
+  // AI Content Analyzer state
+  const [aiAnalysisResult, setAiAnalysisResult] = useState<AIAnalysisResult | null>(null);
+  const [humanizedText, setHumanizedText] = useState<string | null>(null);
+  const [isHumanizing, setIsHumanizing] = useState<boolean>(false);
+  const [textToHumanize, setTextToHumanize] = useState<string>('');
   // Explainer video state
   const [videoStoryboard, setVideoStoryboard] = useState<StoryboardScene[] | null>(null);
   const [explainerVideoProgress, setExplainerVideoProgress] = useState<string>('');
@@ -609,10 +624,10 @@ const AppContent: React.FC = () => {
   };
   
   const handleSetMode = (newMode: GeneratorMode) => {
-    const isNewModeTextual = ['blog-post', 'social-media-post', 'email-campaign', 'ebook-idea', 'recipe-post', 'poem-writer'].includes(newMode);
+    const isNewModeTextual = ['blog-post', 'social-media-post', 'email-campaign', 'ebook-idea', 'ebook-writer', 'recipe-post', 'poem-writer', 'ebook-topic-analyzer'].includes(newMode);
     const isNewModeVideo = newMode.endsWith('video') || ['animate-image', 'video-green-screen', 'lyrics-to-video', 'lip-sync', 'gif-generator', 'ugc-video-ad'].includes(newMode);
     
-    if (isNewModeTextual || isNewModeVideo || ['product-studio', 'tshirt-mockup', 'avatar-generator', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'music-video', 'title-to-image', 'audio-to-text', 'business-name-generator', 'book-cover', 'book-mockup'].includes(newMode)) {
+    if (isNewModeTextual || isNewModeVideo || ['product-studio', 'tshirt-mockup', 'avatar-generator', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'music-video', 'title-to-image', 'audio-to-text', 'business-name-generator', 'book-cover', 'book-mockup', 'ai-content-analyzer'].includes(newMode)) {
       setImageUrls(null);
       setGeneratedImagesData([]);
     }
@@ -625,7 +640,9 @@ const AppContent: React.FC = () => {
       setSocialMediaPosts(null);
       setEmailCampaigns(null);
       setEbookIdea(null);
+      setEbookContent(null);
       setPoemContent(null);
+      setEbookTopics(null);
     }
      if (newMode !== 'business-name-generator') {
         setBusinessNames(null);
@@ -645,6 +662,11 @@ const AppContent: React.FC = () => {
       setFinalTranscription('');
       setInterimTranscription('');
       setIsRecording(false);
+    }
+    if (newMode !== 'ai-content-analyzer') {
+      setAiAnalysisResult(null);
+      setHumanizedText(null);
+      setTextToHumanize('');
     }
 
     if (newMode === 'avatar-generator' || newMode === 'flyer-generator' || newMode === 'title-to-image' || newMode === 'book-cover' || newMode === 'book-mockup') {
@@ -726,7 +748,11 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setEbookContent(null);
+    setEbookTopics(null);
     setPoemContent(null);
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
     setVideoStoryboard(null);
@@ -771,7 +797,11 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setEbookContent(null);
+    setEbookTopics(null);
     setPoemContent(null);
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
     setVideoStoryboard(null);
@@ -811,7 +841,11 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setEbookContent(null);
+    setEbookTopics(null);
     setPoemContent(null);
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
@@ -843,7 +877,11 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setEbookContent(null);
+    setEbookTopics(null);
     setPoemContent(null);
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
@@ -876,7 +914,11 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setEbookContent(null);
+    setEbookTopics(null);
     setPoemContent(null);
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
@@ -915,7 +957,11 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setEbookContent(null);
+    setEbookTopics(null);
     setPoemContent(null);
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
@@ -969,7 +1015,11 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setEbookContent(null);
+    setEbookTopics(null);
     setPoemContent(null);
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
     setVideoStoryboard(null);
@@ -1032,7 +1082,11 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setEbookContent(null);
+    setEbookTopics(null);
     setPoemContent(null);
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
@@ -1079,7 +1133,11 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setEbookContent(null);
+    setEbookTopics(null);
     setPoemContent(null);
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
@@ -1126,7 +1184,11 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setEbookContent(null);
+    setEbookTopics(null);
     setPoemContent(null);
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
     setVideoStoryboard(null);
     setMusicVideoStoryboard(null);
     setLyricsVideoStoryboard(null);
@@ -1264,7 +1326,11 @@ const AppContent: React.FC = () => {
       setBusinessNames(null);
       setEmailCampaigns(null);
       setEbookIdea(null);
+      setEbookContent(null);
+      setEbookTopics(null);
       setPoemContent(null);
+      setAiAnalysisResult(null);
+      setHumanizedText(null);
       setEditModalInfo({ isOpen: false, imageUrl: null, mode: 'inpaint' });
       setExpandModalInfo({ isOpen: false, imageUrl: null });
       setAirtableRecord(null); // Image actions create new content, so clear the prompt context
@@ -1298,7 +1364,11 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setEbookContent(null);
+    setEbookTopics(null);
     setPoemContent(null);
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
     setAirtableRecord(null);
@@ -1356,7 +1426,11 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setEbookContent(null);
+    setEbookTopics(null);
     setPoemContent(null);
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
     // Clear other content types
     setImageUrls(null);
     setGeneratedImagesData([]);
@@ -1386,7 +1460,11 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setEbookContent(null);
+    setEbookTopics(null);
     setPoemContent(null);
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
     // Clear other content types
     setImageUrls(null);
     setGeneratedImagesData([]);
@@ -1416,7 +1494,11 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setEbookContent(null);
+    setEbookTopics(null);
     setPoemContent(null);
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
     setImageUrls(null);
     setGeneratedImagesData([]);
     setFinalVideoUrl(null);
@@ -1445,7 +1527,11 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setEbookContent(null);
+    setEbookTopics(null);
     setPoemContent(null);
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
     // Clear other content types
     setImageUrls(null);
     setGeneratedImagesData([]);
@@ -1475,7 +1561,11 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setEbookContent(null);
+    setEbookTopics(null);
     setPoemContent(null);
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
     // Clear other content types
     setImageUrls(null);
     setGeneratedImagesData([]);
@@ -1517,7 +1607,11 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setEbookContent(null);
+    setEbookTopics(null);
     setPoemContent(null);
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
     // Clear other content types
     setImageUrls(null);
     setGeneratedImagesData([]);
@@ -1547,7 +1641,11 @@ const AppContent: React.FC = () => {
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setEbookContent(null);
+    setEbookTopics(null);
     setPoemContent(null);
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
     // Clear other content types
     setImageUrls(null);
     setGeneratedImagesData([]);
@@ -1569,6 +1667,141 @@ const AppContent: React.FC = () => {
     }
   }, []);
 
+  const handleGenerateEbookChapter = useCallback(async (title: string, chapterTopic: string, outline: string, tone: string, audience: string) => {
+    setIsLoading(true);
+    setError(null);
+    setEbookContent(null);
+    setBlogPostContent(null);
+    setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
+    setEbookIdea(null);
+    setEbookTopics(null);
+    setPoemContent(null);
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
+    setImageUrls(null);
+    setGeneratedImagesData([]);
+    setFinalVideoUrl(null);
+    setPreviewVideoUrl(null);
+    setVideoStoryboard(null);
+    setMusicVideoStoryboard(null);
+    setLyricsVideoStoryboard(null);
+    
+    try {
+      const content = await generateEbookChapter(title, chapterTopic, outline, tone, audience);
+      setEbookContent(content);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+      setError(`Failed to generate ebook chapter: ${message}`);
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const handleGenerateEbookTopics = useCallback(async (keyword: string) => {
+    setIsLoading(true);
+    setError(null);
+    setEbookTopics(null);
+    setGroundingSources(null);
+    setBlogPostContent(null);
+    setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
+    setEbookIdea(null);
+    setEbookContent(null);
+    setPoemContent(null);
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
+    setImageUrls(null);
+    setGeneratedImagesData([]);
+    setFinalVideoUrl(null);
+    setPreviewVideoUrl(null);
+    setVideoStoryboard(null);
+    setMusicVideoStoryboard(null);
+    setLyricsVideoStoryboard(null);
+
+    try {
+        const { topics, sources } = await generateEbookTopics(keyword);
+        setEbookTopics(topics);
+        setGroundingSources(sources);
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+        setError(`Failed to generate ebook topics: ${message}`);
+        console.error(e);
+    } finally {
+        setIsLoading(false);
+    }
+  }, []);
+
+  const handleUseEbookTopic = useCallback((topic: string, description: string) => {
+    showToast('Topic copied! Paste it into the Ebook Writer to start your chapter.', 'success');
+    navigator.clipboard.writeText(`Topic: ${topic}\n\nOutline Start:\n${description}`);
+    handleSetMode('ebook-writer');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const handleAnalyzeAIContent = useCallback(async (text: string) => {
+    setIsLoading(true);
+    setError(null);
+    // Clear all other display states
+    setImageUrls(null);
+    setGeneratedImagesData([]);
+    setFinalVideoUrl(null);
+    setPreviewVideoUrl(null);
+    setBlogPostContent(null);
+    setPoemContent(null);
+    setSocialMediaPosts(null);
+    setBusinessNames(null);
+    setEmailCampaigns(null);
+    setEbookIdea(null);
+    setEbookContent(null);
+    setEbookTopics(null);
+    setVideoStoryboard(null);
+    setMusicVideoStoryboard(null);
+    setLyricsVideoStoryboard(null);
+    setFinalTranscription('');
+    setInterimTranscription('');
+    
+    // Set state for the current operation
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
+    setTextToHumanize(text);
+
+    try {
+      const result = await analyzeAIContent(text);
+      setAiAnalysisResult(result);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+      setError(`Failed to analyze content: ${message}`);
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const handleHumanizeText = useCallback(async () => {
+    if (!textToHumanize) {
+      setError("No text available to humanize.");
+      return;
+    }
+    setIsHumanizing(true);
+    setError(null);
+    setHumanizedText(null);
+    
+    try {
+      const result = await humanizeText(textToHumanize);
+      setHumanizedText(result);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'An unexpected error occurred.';
+      setError(`Failed to humanize text: ${message}`);
+      console.error(e);
+    } finally {
+      setIsHumanizing(false);
+    }
+  }, [textToHumanize]);
+
   const handleGenerateBookCover = useCallback(async (title: string, author: string, synopsis: string, style: string) => {
       setIsLoading(true);
       setError(null);
@@ -1581,7 +1814,11 @@ const AppContent: React.FC = () => {
       setBusinessNames(null);
       setEmailCampaigns(null);
       setEbookIdea(null);
+      setEbookContent(null);
+      setEbookTopics(null);
       setPoemContent(null);
+      setAiAnalysisResult(null);
+      setHumanizedText(null);
       setGroundingSources(null);
       setInspirationPrompts([]);
       setVideoStoryboard(null);
@@ -1694,7 +1931,11 @@ const AppContent: React.FC = () => {
       setBusinessNames(null);
       setEmailCampaigns(null);
       setEbookIdea(null);
+      setEbookContent(null);
+      setEbookTopics(null);
       setPoemContent(null);
+      setAiAnalysisResult(null);
+      setHumanizedText(null);
       setGroundingSources(null);
       setInspirationPrompts([]);
       setVideoStoryboard(null);
@@ -1742,7 +1983,11 @@ ${info ? `- Additional Info: "${info}"` : ''}
         setBusinessNames(null);
         setEmailCampaigns(null);
         setEbookIdea(null);
+        setEbookContent(null);
+        setEbookTopics(null);
         setPoemContent(null);
+        setAiAnalysisResult(null);
+        setHumanizedText(null);
         setGroundingSources(null);
         setInspirationPrompts([]);
         setVideoStoryboard(null);
@@ -1775,7 +2020,11 @@ ${info ? `- Additional Info: "${info}"` : ''}
         setBusinessNames(null);
         setEmailCampaigns(null);
         setEbookIdea(null);
+        setEbookContent(null);
+        setEbookTopics(null);
         setPoemContent(null);
+        setAiAnalysisResult(null);
+        setHumanizedText(null);
         setGroundingSources(null);
         setInspirationPrompts([]);
         setVideoStoryboard(null);
@@ -1832,7 +2081,11 @@ ${info ? `- Additional Info: "${info}"` : ''}
         setBusinessNames(null);
         setEmailCampaigns(null);
         setEbookIdea(null);
+        setEbookContent(null);
+        setEbookTopics(null);
         setPoemContent(null);
+        setAiAnalysisResult(null);
+        setHumanizedText(null);
         setGroundingSources(null);
         setInspirationPrompts([]);
         setVideoStoryboard(null);
@@ -1879,7 +2132,11 @@ ${info ? `- Additional Info: "${info}"` : ''}
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setEbookContent(null);
+    setEbookTopics(null);
     setPoemContent(null);
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
     setGroundingSources(null);
     setInspirationPrompts([]);
     setVideoStoryboard(null);
@@ -1957,7 +2214,11 @@ ${info ? `- Additional Info: "${info}"` : ''}
     setBusinessNames(null);
     setEmailCampaigns(null);
     setEbookIdea(null);
+    setEbookContent(null);
+    setEbookTopics(null);
     setPoemContent(null);
+    setAiAnalysisResult(null);
+    setHumanizedText(null);
     setLyricsVideoStoryboard(null);
     
     try {
@@ -2129,11 +2390,12 @@ ${info ? `- Additional Info: "${info}"` : ''}
   const isAnyLoading = isLoading || isPreviewLoading || isEnhancing || isInspiring || isFetchingFromAirtable;
   const isImageDisplayMode = ['text-to-image', 'image-variations', 'ugc-ad', 'product-studio', 'tshirt-mockup', 'avatar-generator', 'creative-chat', 'image-to-prompt', 'flyer-generator', 'logo-generator', 'thumbnail-generator', 'recreate-thumbnail', 'title-to-image', 'book-cover', 'book-mockup'].includes(mode);
   const isVideoDisplayMode = ['text-to-video', 'animate-image', 'video-green-screen', 'lip-sync', 'gif-generator', 'ugc-video-ad'].includes(mode);
-  const isTextDisplayMode = ['blog-post', 'social-media-post', 'email-campaign', 'ebook-idea', 'recipe-post', 'poem-writer'].includes(mode);
+  const isTextDisplayMode = ['blog-post', 'social-media-post', 'email-campaign', 'ebook-idea', 'ebook-writer', 'recipe-post', 'poem-writer', 'ebook-topic-analyzer'].includes(mode);
   const isBusinessNameDisplayMode = mode === 'business-name-generator';
   const isMusicVideoDisplayMode = mode === 'music-video';
   const isLyricsVideoDisplayMode = mode === 'lyrics-to-video';
   const isAudioDisplayMode = mode === 'audio-to-text';
+  const isAIAnalyzerMode = mode === 'ai-content-analyzer';
   const isVideoMode = ['text-to-video', 'animate-image', 'video-green-screen', 'gif-generator', 'explainer-video', 'lyrics-to-video', 'lip-sync', 'ugc-video-ad'].includes(mode);
 
   if (isVideoMode && !hasApiKey) {
@@ -2428,10 +2690,31 @@ ${info ? `- Additional Info: "${info}"` : ''}
               </>
             )}
             
+            {mode === 'ebook-topic-analyzer' && (
+              <>
+                <h2 className="text-xl font-bold text-indigo-400">Ebook Topic Analyzer</h2>
+                <EbookTopicAnalyzer onSubmit={handleGenerateEbookTopics} isLoading={isLoading} />
+              </>
+            )}
+            
             {mode === 'ebook-idea' && (
               <>
                 <h2 className="text-xl font-bold text-indigo-400">Ebook Idea Generator</h2>
                 <EbookIdeaGenerator onSubmit={handleGenerateEbookIdea} isLoading={isLoading} />
+              </>
+            )}
+            
+            {mode === 'ebook-writer' && (
+              <>
+                <h2 className="text-xl font-bold text-indigo-400">Ebook Writer</h2>
+                <EbookGenerator onSubmit={handleGenerateEbookChapter} isLoading={isLoading} />
+              </>
+            )}
+
+            {mode === 'ai-content-analyzer' && (
+              <>
+                <h2 className="text-xl font-bold text-indigo-400">AI Content Analyzer & Humanizer</h2>
+                <AIContentAnalyzer onSubmit={handleAnalyzeAIContent} isLoading={isLoading} />
               </>
             )}
 
@@ -2567,6 +2850,8 @@ ${info ? `- Additional Info: "${info}"` : ''}
                 {mode === 'social-media-post' && <SocialMediaPostDisplay posts={socialMediaPosts} isLoading={isLoading} onGenerateImageClick={handleGenerateImageForPost} />}
                 {mode === 'email-campaign' && <EmailCampaignDisplay campaigns={emailCampaigns} isLoading={isLoading} />}
                 {mode === 'ebook-idea' && <EbookIdeaDisplay idea={ebookIdea} isLoading={isLoading} onGenerateCoverClick={handleGenerateCoverForEbook} />}
+                {mode === 'ebook-writer' && <EbookDisplay content={ebookContent} isLoading={isLoading} />}
+                {mode === 'ebook-topic-analyzer' && <EbookTopicDisplay topics={ebookTopics} isLoading={isLoading} onSelectTopic={handleUseEbookTopic} sources={groundingSources} />}
               </>
             )}
              {isBusinessNameDisplayMode && (
@@ -2586,6 +2871,15 @@ ${info ? `- Additional Info: "${info}"` : ''}
                 finalText={finalTranscription}
                 interimText={interimTranscription}
                 isRecording={isRecording}
+              />
+            )}
+            {isAIAnalyzerMode && (
+              <AIContentAnalysisDisplay
+                  analysis={aiAnalysisResult}
+                  humanizedText={humanizedText}
+                  onHumanize={handleHumanizeText}
+                  isLoading={isLoading}
+                  isHumanizing={isHumanizing}
               />
             )}
           </div>
